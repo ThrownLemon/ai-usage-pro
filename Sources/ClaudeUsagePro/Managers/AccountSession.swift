@@ -37,6 +37,13 @@ class AccountSession: ObservableObject, Identifiable {
     
     func ping() {
         print("[DEBUG] Session: Manual ping requested.")
+        tracker?.onPingComplete = { [weak self] success in
+            print("[DEBUG] Session: Ping finished, refreshing data...")
+            // Wait a moment for Claude to process, then refresh
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                self?.fetchNow()
+            }
+        }
         tracker?.pingSession()
     }
     

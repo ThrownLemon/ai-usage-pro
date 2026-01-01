@@ -15,6 +15,39 @@ struct UsageView: View {
         return .blue // Default/Pro
     }
     
+    // Dynamic color based on usage percentage: green -> yellow -> red (for session)
+    func sessionColor(for percentage: Double) -> Color {
+        if percentage < 0.5 {
+            return .green
+        } else if percentage < 0.75 {
+            return .yellow
+        } else {
+            return .red
+        }
+    }
+    
+    // Session gauge gradient
+    func sessionGradient(for percentage: Double) -> Gradient {
+        if percentage < 0.5 {
+            return Gradient(colors: [.green, .green.opacity(0.7)])
+        } else if percentage < 0.75 {
+            return Gradient(colors: [.yellow, .orange])
+        } else {
+            return Gradient(colors: [.orange, .red])
+        }
+    }
+    
+    // Weekly gauge uses blue/purple scheme: cyan -> purple -> magenta
+    func weeklyColor(for percentage: Double) -> Color {
+        if percentage < 0.5 {
+            return .cyan
+        } else if percentage < 0.75 {
+            return .purple
+        } else {
+            return .pink
+        }
+    }
+    
     var body: some View {
         Group {
             if let usage = account.usageData {
@@ -47,7 +80,7 @@ struct UsageView: View {
                         }
                     }
                     .gaugeStyle(.accessoryCircular)
-                    .tint(Gradient(colors: [.blue, .purple]))
+                    .tint(sessionGradient(for: usage.sessionPercentage))
                     .scaleEffect(1.3)
                     .frame(width: 55, height: 55)
                     
@@ -85,7 +118,7 @@ struct UsageView: View {
                                 EmptyView()
                             }
                             .gaugeStyle(.accessoryLinear)
-                            .tint(.green)
+                            .tint(weeklyColor(for: usage.weeklyPercentage))
                             .scaleEffect(y: 0.8)
                         }
                     }
@@ -94,7 +127,7 @@ struct UsageView: View {
                 LoadingCardView()
             }
         }
-        .padding(12)
+        .padding(20) // Increased for better spacing/sizing consistency
         .background(Material.regular)
         .cornerRadius(12)
         .overlay(

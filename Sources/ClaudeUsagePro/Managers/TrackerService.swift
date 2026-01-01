@@ -6,63 +6,117 @@ import Combine
 class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
     private var webView: WKWebView?
     private var currentTask: AnyCancellable?
+    private var storedCookies: [HTTPCookie] = []
+    private var pendingPing = false
     
     // Result callback
     var onUpdate: ((UsageData) -> Void)?
     var onError: ((Error) -> Void)?
+    var onPingComplete: ((Bool) -> Void)?
     
-    // Actions
+    // Ping session by loading page with cookies and sending a message
     func pingSession() {
         print("[DEBUG] TrackerService: Pinging session...")
-        // We need to inject JS to send a message
-        let script = """
-            async function ping() {
-                try {
-                    const orgRes = await fetch('/api/organizations');
-                    const orgs = await orgRes.json();
-                    const orgId = orgs[0].uuid || orgs[0].id;
-                    
-                    // Create a new conversation
-                    const chatRes = await fetch(`/api/organizations/${orgId}/chat_conversations`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            uuid: crypto.randomUUID(),
-                            name: ''
-                        })
-                    });
-                    const chat = await chatRes.json();
-                    const chatId = chat.uuid;
-                    
-                    // Send message to haiku
-                    await fetch(`/api/organizations/${orgId}/chat_conversations/${chatId}/completion`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            prompt: "hi",
-                            timezone: "America/New_York",
-                            model: "claude-3-haiku-20240307"
-                        })
-                    });
-                    
-                    // Delete conversation to clean up (optional, but polite)
-                    // await fetch(`/api/organizations/${orgId}/chat_conversations/${chatId}`, { method: 'DELETE' });
-                    
-                    return { success: true };
-                } catch (e) {
-                    return { error: e.toString() };
-                }
+        guard !storedCookies.isEmpty else {
+            print("[ERROR] TrackerService: No cookies stored for ping")
+            return
+        }
+        pendingPing = true
+        
+        // Create fresh webView with stored cookies
+        let config = WKWebViewConfiguration()
+        config.websiteDataStore = .nonPersistent()
+        
+        let group = DispatchGroup()
+        for cookie in storedCookies {
+            group.enter()
+            config.websiteDataStore.httpCookieStore.setCookie(cookie) {
+                group.leave()
             }
-            await ping();
+        }
+        
+        group.notify(queue: .main) {
+            print("[DEBUG] TrackerService: Cookies injected for ping, loading page...")
+            let webView = WKWebView(frame: .zero, configuration: config)
+            webView.navigationDelegate = self
+            self.webView = webView
+            
+            if let url = URL(string: "https://claude.ai/chats") {
+                webView.load(URLRequest(url: url))
+            }
+        }
+    }
+    
+    private func executePingScript() {
+        let script = """
+            var result = { error: 'not started' };
+            try {
+                console.log('[PING] Starting ping...');
+                
+                const orgRes = await fetch('/api/organizations');
+                console.log('[PING] Orgs response status:', orgRes.status);
+                const orgs = await orgRes.json();
+                console.log('[PING] Orgs count:', orgs.length);
+                const orgId = orgs[0].uuid || orgs[0].id;
+                console.log('[PING] Using orgId:', orgId);
+                
+                // Create a new conversation
+                console.log('[PING] Creating conversation...');
+                const chatRes = await fetch('/api/organizations/' + orgId + '/chat_conversations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        uuid: crypto.randomUUID(),
+                        name: ''
+                    })
+                });
+                console.log('[PING] Chat create status:', chatRes.status);
+                const chat = await chatRes.json();
+                console.log('[PING] Chat UUID:', chat.uuid);
+                const chatId = chat.uuid;
+                
+                // Send a short message to haiku (cheapest model)
+                console.log('[PING] Sending message...');
+                const msgRes = await fetch('/api/organizations/' + orgId + '/chat_conversations/' + chatId + '/completion', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: "hi",
+                        timezone: "Australia/Brisbane",
+                        model: "claude-3-haiku-20240307"
+                    })
+                });
+                console.log('[PING] Message status:', msgRes.status);
+                
+                result = { success: true, chatId: chatId, status: msgRes.status };
+                console.log('[PING] SUCCESS!');
+            } catch (e) {
+                console.log('[PING] ERROR:', e.toString());
+                result = { error: e.toString() };
+            }
+            result;
         """
         
+        print("[DEBUG] TrackerService: Executing ping script...")
         webView?.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in
-             print("[DEBUG] TrackerService: Ping result: \(result)")
+            switch result {
+            case .success(let value):
+                if let dict = value as? [String: Any] {
+                    print("[DEBUG] TrackerService: Ping completed: \(dict)")
+                } else {
+                    print("[DEBUG] TrackerService: Ping result: \(String(describing: value))")
+                }
+            case .failure(let error):
+                print("[DEBUG] TrackerService: Ping FAILED with error: \(error)")
+            }
+            self.onPingComplete?(true)
+            self.pendingPing = false
         }
     }
     
     func fetchUsage(cookies: [HTTPCookie]) {
         print("[DEBUG] TrackerService: Starting fetch for \(cookies.count) cookies.")
+        self.storedCookies = cookies // Store for later ping use
         DispatchQueue.main.async {
             let config = WKWebViewConfiguration()
             config.websiteDataStore = .nonPersistent()
@@ -95,8 +149,15 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
     }
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        // JS to find usage limits
         print("[DEBUG] TrackerService: Page finished loading. Injecting JS...")
+        
+        // If ping is pending, execute ping script instead of usage script
+        if pendingPing {
+            executePingScript()
+            return
+        }
+        
+        // Otherwise run usage script
         
         let script = """
             try {

@@ -18,6 +18,76 @@ class NotificationManager: NSObject, ObservableObject {
         checkAuthorizationStatus()
     }
 
+    // MARK: - Notification Types
+
+    enum NotificationType {
+        case sessionThreshold75
+        case sessionThreshold90
+        case weeklyThreshold75
+        case weeklyThreshold90
+        case sessionReady
+
+        var identifier: String {
+            switch self {
+            case .sessionThreshold75:
+                return "session.threshold.75"
+            case .sessionThreshold90:
+                return "session.threshold.90"
+            case .weeklyThreshold75:
+                return "weekly.threshold.75"
+            case .weeklyThreshold90:
+                return "weekly.threshold.90"
+            case .sessionReady:
+                return "session.ready"
+            }
+        }
+    }
+
+    // MARK: - Notification Content Builders
+
+    struct NotificationContent {
+        let title: String
+        let body: String
+        let identifier: String
+    }
+
+    func buildNotificationContent(
+        type: NotificationType,
+        accountName: String,
+        percentage: Double? = nil
+    ) -> NotificationContent {
+        let title: String
+        let body: String
+
+        switch type {
+        case .sessionThreshold75:
+            title = "Usage Alert"
+            body = "\(accountName): Session usage has reached 75%"
+
+        case .sessionThreshold90:
+            title = "Usage Alert"
+            body = "\(accountName): Session usage has reached 90%"
+
+        case .weeklyThreshold75:
+            title = "Usage Alert"
+            body = "\(accountName): Weekly usage has reached 75%"
+
+        case .weeklyThreshold90:
+            title = "Usage Alert"
+            body = "\(accountName): Weekly usage has reached 90%"
+
+        case .sessionReady:
+            title = "Session Ready"
+            body = "\(accountName): Your session is ready to start"
+        }
+
+        return NotificationContent(
+            title: title,
+            body: body,
+            identifier: type.identifier
+        )
+    }
+
     // Request notification permission from the user
     func requestPermission() {
         notificationCenter.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
@@ -73,6 +143,12 @@ class NotificationManager: NSObject, ObservableObject {
                 }
             }
         }
+    }
+
+    // Send a typed notification using the content builder
+    func sendNotification(type: NotificationType, accountName: String, percentage: Double? = nil) {
+        let content = buildNotificationContent(type: type, accountName: accountName, percentage: percentage)
+        sendNotification(title: content.title, body: content.body, identifier: content.identifier)
     }
 
     // Remove pending notifications by identifier

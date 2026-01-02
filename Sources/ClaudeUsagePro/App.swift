@@ -72,6 +72,7 @@ struct ContentView: View {
                 if !showSettings, !appState.sessions.isEmpty {
                     HoverIconButton(image: "arrow.clockwise", helpText: "Refresh Data Now") {
                         appState.refreshAll()
+                        appState.nextRefresh = Date().addingTimeInterval(appState.refreshIntervalSeconds())
                     }
                 }
                 
@@ -80,6 +81,7 @@ struct ContentView: View {
                 if !showSettings, !appState.sessions.isEmpty {
                     CountdownView(target: appState.nextRefresh)
                         .help("Time until next automatic refresh")
+                        .id(appState.nextRefresh)
                 }
                 
                 Spacer()
@@ -89,14 +91,14 @@ struct ContentView: View {
             .padding(12)
             .background(Material.bar)
         }
-        .frame(width: 450, height: 600) // Default size: wider for emails, tall for 4 cards
+        .frame(width: 405, height: 660)
         .background(Material.ultraThin)
         .onAppear {
             authManager.onLoginSuccess = { cookies in
                 print("[DEBUG] App: Login success.")
                 appState.addAccount(cookies: cookies)
             }
-            appState.nextRefresh = Date().addingTimeInterval(300)
+            appState.nextRefresh = Date().addingTimeInterval(appState.refreshIntervalSeconds())
         }
     }
 }
@@ -239,6 +241,12 @@ class AppState: ObservableObject {
                 self?.iconRefreshTrigger = UUID()
             }
             .store(in: &sessionChangeCancellables)
+        
+        session.onRefreshTick = { [weak self] in
+            DispatchQueue.main.async {
+                self?.nextRefresh = Date().addingTimeInterval(self?.refreshIntervalSeconds() ?? 300)
+            }
+        }
     }
     
     func removeAccount(id: UUID) {
@@ -247,13 +255,26 @@ class AppState: ObservableObject {
     }
     
     func refreshAll() {
-        print("[DEBUG] AppState: Refreshing all accounts...")
+        let nextInterval = refreshIntervalSeconds()
+        print("[DEBUG] AppState: Refreshing all accounts... Next in \(Int(nextInterval))s")
         for session in sessions {
             // Updated call: use fetchNow() from Managers/AccountSession
             session.fetchNow()
         }
         // Force UI update for countdown visual
-        nextRefresh = Date().addingTimeInterval(300)
+        nextRefresh = Date().addingTimeInterval(nextInterval)
+    }
+    
+    func rescheduleAllSessions() {
+        for session in sessions {
+            session.scheduleRefreshTimer()
+        }
+        nextRefresh = Date().addingTimeInterval(refreshIntervalSeconds())
+    }
+    
+    func refreshIntervalSeconds() -> TimeInterval {
+        let interval = defaults.double(forKey: "refreshInterval")
+        return interval > 0 ? interval : 300
     }
     
     private func saveAccounts() {
@@ -371,7 +392,7 @@ struct AccountRowSessionView: View {
     @ObservedObject var session: AccountSession
     
     var body: some View {
-        UsageView(account: session.account) {
+        UsageView(account: session.account, isFetching: session.isFetching) {
             print("Ping clicked for \(session.account.name)")
             session.ping()
         }

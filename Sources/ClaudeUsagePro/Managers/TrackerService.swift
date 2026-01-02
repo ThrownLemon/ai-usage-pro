@@ -8,6 +8,7 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
     private var currentTask: AnyCancellable?
     private var storedCookies: [HTTPCookie] = []
     private var pendingPing = false
+    private var pingTimeoutWorkItem: DispatchWorkItem?
     
     // Result callback
     var onUpdate: ((UsageData) -> Void)?
@@ -19,9 +20,20 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
         print("[DEBUG] TrackerService: Pinging session...")
         guard !storedCookies.isEmpty else {
             print("[ERROR] TrackerService: No cookies stored for ping")
+            onPingComplete?(false)
             return
         }
         pendingPing = true
+        
+        pingTimeoutWorkItem?.cancel()
+        let timeoutWorkItem = DispatchWorkItem { [weak self] in
+            guard let self = self, self.pendingPing else { return }
+            print("[ERROR] TrackerService: Ping timed out")
+            self.pendingPing = false
+            self.onPingComplete?(false)
+        }
+        pingTimeoutWorkItem = timeoutWorkItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15.0, execute: timeoutWorkItem)
         
         // Create fresh webView with stored cookies
         let config = WKWebViewConfiguration()
@@ -43,24 +55,30 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
             
             if let url = URL(string: "https://claude.ai/chats") {
                 webView.load(URLRequest(url: url))
+            } else {
+                print("[ERROR] TrackerService: Invalid ping URL")
+                self.pendingPing = false
+                self.onPingComplete?(false)
             }
         }
     }
     
     private func executePingScript() {
         let script = """
-            var result = { error: 'not started' };
+            let result = { error: 'not started' };
             try {
                 console.log('[PING] Starting ping...');
                 
                 const orgRes = await fetch('/api/organizations');
                 console.log('[PING] Orgs response status:', orgRes.status);
+                if (!orgRes.ok) throw new Error('orgs status ' + orgRes.status);
                 const orgs = await orgRes.json();
                 console.log('[PING] Orgs count:', orgs.length);
+                if (!orgs || orgs.length === 0) throw new Error('no orgs');
                 const orgId = orgs[0].uuid || orgs[0].id;
+                if (!orgId) throw new Error('missing orgId');
                 console.log('[PING] Using orgId:', orgId);
                 
-                // Create a new conversation
                 console.log('[PING] Creating conversation...');
                 const chatRes = await fetch('/api/organizations/' + orgId + '/chat_conversations', {
                     method: 'POST',
@@ -71,46 +89,157 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                     })
                 });
                 console.log('[PING] Chat create status:', chatRes.status);
+                if (!chatRes.ok) throw new Error('chat create status ' + chatRes.status);
                 const chat = await chatRes.json();
                 console.log('[PING] Chat UUID:', chat.uuid);
                 const chatId = chat.uuid;
+                if (!chatId) throw new Error('missing chatId');
                 
-                // Send a short message to haiku (cheapest model)
                 console.log('[PING] Sending message...');
-                const msgRes = await fetch('/api/organizations/' + orgId + '/chat_conversations/' + chatId + '/completion', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        prompt: "hi",
-                        timezone: "Australia/Brisbane",
-                        model: "claude-3-haiku-20240307"
-                    })
-                });
-                console.log('[PING] Message status:', msgRes.status);
+                const modelEndpoints = [
+                    '/api/organizations/' + orgId + '/models',
+                    '/api/models',
+                    '/api/organizations/' + orgId + '/available_models'
+                ];
+                let models = [];
+                let modelSource = null;
+                const modelDiagnostics = [];
+                for (const endpoint of modelEndpoints) {
+                    try {
+                        const modelRes = await fetch(endpoint);
+                        modelDiagnostics.push({ endpoint: endpoint, status: modelRes.status });
+                        if (!modelRes.ok) {
+                            console.log('[PING] Model endpoint status:', modelRes.status, endpoint);
+                            continue;
+                        }
+                        const modelData = await modelRes.json();
+                        let rawModels = [];
+                        if (Array.isArray(modelData)) {
+                            rawModels = modelData;
+                        } else if (Array.isArray(modelData.models)) {
+                            rawModels = modelData.models;
+                        } else if (Array.isArray(modelData.model_names)) {
+                            rawModels = modelData.model_names;
+                        } else if (Array.isArray(modelData.available_models)) {
+                            rawModels = modelData.available_models;
+                        }
+                        const extracted = rawModels
+                            .map((item) => (typeof item === 'string' ? item : (item.name || item.model || item.id)))
+                            .filter(Boolean);
+                        if (extracted.length > 0) {
+                            models = extracted;
+                            modelSource = endpoint;
+                            break;
+                        }
+                    } catch (e) {
+                        console.log('[PING] Model fetch error:', e.toString());
+                        modelDiagnostics.push({ endpoint: endpoint, error: e.toString() });
+                    }
+                }
+                if (models.length === 0) {
+                    models = ["claude-3-haiku-20240307", "claude-3-5-haiku-20241022"];
+                }
+                const modelScore = (name) => {
+                    const lower = (name || '').toLowerCase();
+                    if (lower.includes('haiku')) return 0;
+                    if (lower.includes('sonnet')) return 1;
+                    if (lower.includes('opus')) return 2;
+                    return 3;
+                };
+                models.sort((a, b) => modelScore(a) - modelScore(b));
+                console.log('[PING] Models:', models, 'source:', modelSource);
                 
-                result = { success: true, chatId: chatId, status: msgRes.status };
+                const clientHeaders = {
+                    'Content-Type': 'application/json',
+                    'Accept': 'text/event-stream'
+                };
+                const clientVersion = window.__BOOTSTRAP__?.version || window.__APP_VERSION__ || window.appVersion;
+                const clientSha = window.__BOOTSTRAP__?.sha || window.__APP_SHA__ || window.appSha;
+                const clientPlatform = window.__BOOTSTRAP__?.platform || 'web_claude_ai';
+                if (clientVersion) clientHeaders['anthropic-client-version'] = clientVersion;
+                if (clientSha) clientHeaders['anthropic-client-sha'] = clientSha;
+                if (clientPlatform) clientHeaders['anthropic-client-platform'] = clientPlatform;
+                
+                let msgRes = null;
+                let msgError = null;
+                let modelUsed = null;
+                const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                const baseBody = {
+                    prompt: "hi",
+                    timezone: timezone,
+                    rendering_mode: "default",
+                    attachments: [],
+                    files: []
+                };
+                msgRes = await fetch('/api/organizations/' + orgId + '/chat_conversations/' + chatId + '/completion', {
+                    method: 'POST',
+                    headers: clientHeaders,
+                    body: JSON.stringify(baseBody)
+                });
+                console.log('[PING] Message status:', msgRes.status, 'model: default');
+                if (msgRes.ok) {
+                    modelUsed = 'default';
+                } else {
+                    msgError = await msgRes.text();
+                }
+                if (!msgRes.ok) {
+                    for (const model of models) {
+                        msgRes = await fetch('/api/organizations/' + orgId + '/chat_conversations/' + chatId + '/completion', {
+                            method: 'POST',
+                            headers: clientHeaders,
+                            body: JSON.stringify({
+                                ...baseBody,
+                                model: model
+                            })
+                        });
+                        console.log('[PING] Message status:', msgRes.status, 'model:', model);
+                        if (msgRes.ok) {
+                            msgError = null;
+                            modelUsed = model;
+                            break;
+                        }
+                        msgError = await msgRes.text();
+                    }
+                }
+                if (!msgRes || !msgRes.ok) throw new Error('message status ' + (msgRes?.status || 'unknown') + ' body ' + msgError + ' modelSource ' + modelSource + ' modelDiagnostics ' + JSON.stringify(modelDiagnostics) + ' models ' + JSON.stringify(models));
+                
+                console.log('[PING] Deleting ping chat...');
+                const deleteRes = await fetch('/api/organizations/' + orgId + '/chat_conversations/' + chatId, {
+                    method: 'DELETE'
+                });
+                console.log('[PING] Delete status:', deleteRes.status);
+                
+                result = { success: true, chatId: chatId, status: msgRes.status, deleteStatus: deleteRes.status, model: modelUsed, modelSource: modelSource, modelDiagnostics: modelDiagnostics, clientHeaders: clientHeaders };
                 console.log('[PING] SUCCESS!');
             } catch (e) {
                 console.log('[PING] ERROR:', e.toString());
                 result = { error: e.toString() };
             }
-            result;
+            return result;
         """
         
         print("[DEBUG] TrackerService: Executing ping script...")
         webView?.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { result in
+            var success = false
             switch result {
             case .success(let value):
                 if let dict = value as? [String: Any] {
                     print("[DEBUG] TrackerService: Ping completed: \(dict)")
+                    if dict["success"] != nil {
+                        success = true
+                    }
                 } else {
                     print("[DEBUG] TrackerService: Ping result: \(String(describing: value))")
                 }
             case .failure(let error):
                 print("[DEBUG] TrackerService: Ping FAILED with error: \(error)")
             }
-            self.onPingComplete?(true)
+            if self.pendingPing {
+                self.onPingComplete?(success)
+            }
             self.pendingPing = false
+            self.pingTimeoutWorkItem?.cancel()
+            self.pingTimeoutWorkItem = nil
         }
     }
     

@@ -21,6 +21,7 @@ struct UsageView: View {
         let tier = account.usageData?.tier.lowercased() ?? ""
         if tier.contains("max") { return .yellow }
         if tier.contains("team") { return .purple }
+        if tier.contains("free") { return .gray }
         return .blue // Default/Pro
     }
     
@@ -51,27 +52,36 @@ struct UsageView: View {
         return "\(value)%"
     }
     
-    func weeklyGradient(for percentage: Double) -> Gradient {
-        if percentage < 0.5 {
-            return Gradient(colors: [.mint, .teal])
-        } else if percentage < 0.75 {
-            return Gradient(colors: [.teal, .indigo])
-        } else {
-            return Gradient(colors: [.indigo, .pink])
-        }
+    func weeklyColor(for percentage: Double) -> Color {
+        let hues: [Double] = [
+            0.33,
+            0.28,
+            0.23,
+            0.18,
+            0.13,
+            0.08,
+            0.03,
+            0.98,
+            0.92,
+            0.86,
+            0.80
+        ]
+        let clamped = max(0.0, min(1.0, percentage))
+        let index = min(hues.count - 1, Int((clamped * 10.0).rounded(.down)))
+        return Color(hue: hues[index], saturation: 0.85, brightness: 0.95)
     }
     
     var body: some View {
         Group {
             if let usage = account.usageData {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack(spacing: 20) {
-                        VStack(alignment: .center, spacing: 4) {
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 10) {
+                        VStack(alignment: .center, spacing: 6) {
                             Text("Weekly")
-                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
-                                .padding(.bottom, 4)
+                                .padding(.bottom, 10)
                             
                             Gauge(value: usage.weeklyPercentage) {
                                 EmptyView()
@@ -80,29 +90,75 @@ struct UsageView: View {
                                     .font(.system(size: 9, weight: .bold, design: .rounded))
                                     .multilineTextAlignment(.center)
                                     .lineLimit(1)
-                                    .minimumScaleFactor(0.5)
+                                    .minimumScaleFactor(0.8)
                             }
                             .gaugeStyle(.accessoryCircular)
-                            .tint(AngularGradient(gradient: weeklyGradient(for: usage.weeklyPercentage), center: .center))
-                            .frame(width: 42, height: 42)
+                            .tint(weeklyColor(for: usage.weeklyPercentage))
+                            .frame(width: 28, height: 28)
                             
                             Text(usage.weeklyReset)
-                                .font(.system(size: 10, weight: .medium, design: .rounded))
+                                .font(.system(size: 11, weight: .medium, design: .rounded))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
-                                .padding(.top, 6)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                                .padding(.top, 8)
                         }
-                        .fixedSize(horizontal: true, vertical: false)
+                        .frame(width: 64, alignment: .center)
+                        .padding(.top, 0)
                         .padding(.trailing, 2)
                         
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
                                 Text(account.name)
-                                    .font(.system(.headline, design: .rounded))
+                                    .font(.system(.headline, design: .rounded).weight(.semibold))
                                     .lineLimit(1)
+                                    .truncationMode(.tail)
+                                    .layoutPriority(1)
+                                    .padding(.bottom, 6)
                                 
                                 Spacer()
                                 
+                                Text(usage.tier.replacingOccurrences(of: "_", with: " ").capitalized)
+                                    .font(.system(.caption2, design: .rounded).bold())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(tierColor)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                                    .fixedSize(horizontal: true, vertical: false)
+                                    .layoutPriority(2)
+                            }
+                            
+                            HStack(spacing: 6) {
+                                Text("Session Usage")
+                                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                                    .foregroundColor(.secondary)
+                                    .lineLimit(1)
+                                    .truncationMode(.tail)
+                                    .layoutPriority(1)
+                                
+                                Spacer()
+                                
+                                if usage.sessionReset == "Ready" {
+                                    Button(action: { onPing?() }) {
+                                        Image(systemName: "play.circle.fill")
+                                            .font(.system(size: 14))
+                                            .foregroundColor(.green)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                                
+                                Text(percentageText(for: usage.sessionPercentage))
+                                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            HStack(spacing: 6) {
+                                Text(usage.sessionReset == "Ready" ? "Ready to start new session" : "Resets in: \(usage.sessionReset)")
+                                    .font(.system(.caption, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                Spacer()
                                 if isFetching {
                                     ProgressView()
                                         .progressViewStyle(.circular)
@@ -112,37 +168,7 @@ struct UsageView: View {
                                         .font(.system(size: 12))
                                         .foregroundColor(.green)
                                 }
-                                
-                                Text(usage.tier.replacingOccurrences(of: "_", with: " ").capitalized)
-                                    .font(.system(.caption2, design: .rounded).bold())
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 3)
-                                    .background(tierColor)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(8)
                             }
-                            
-                            HStack {
-                                Text("Session Usage (5 hr rolling window)")
-                                    .font(.system(.caption, design: .rounded).weight(.semibold))
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                if usage.sessionReset == "Ready" {
-                                    Button(action: { onPing?() }) {
-                                        Image(systemName: "play.circle.fill")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.green)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                Text(percentageText(for: usage.sessionPercentage))
-                                    .font(.system(.caption, design: .rounded).weight(.semibold))
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Text(usage.sessionReset == "Ready" ? "Ready to start new session" : "Resets in: \(usage.sessionReset)")
-                                .font(.system(.caption, design: .rounded))
-                                .foregroundColor(.secondary)
                             
                             Gauge(value: usage.sessionPercentage) {
                                 EmptyView()
@@ -150,7 +176,7 @@ struct UsageView: View {
                             .gaugeStyle(.accessoryLinear)
                             .tint(sessionGradient(for: usage.sessionPercentage))
                             .controlSize(.small)
-                            .scaleEffect(y: 1.45)
+                            .scaleEffect(y: 1.35)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }

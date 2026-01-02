@@ -11,11 +11,35 @@ struct ClaudeUsageProApp: App {
             ContentView(appState: appState, authManager: authManager)
                 .environmentObject(appState)
         } label: {
-            let state = appState.menuBarIconState
-            Image(systemName: state.iconName)
-                .foregroundColor(state.iconColor)
+            MenuBarUsageView(appState: appState)
         }
         .menuBarExtraStyle(.window)
+    }
+}
+
+struct MenuBarUsageView: View {
+    @ObservedObject var appState: AppState
+    
+    var body: some View {
+        let displaySessions = Array(appState.sessions.prefix(4))
+        let labelText = displaySessions.map { session in
+            let percent = Int((session.account.usageData?.sessionPercentage ?? 0) * 100)
+            return "\(percent)%"
+        }.joined(separator: "  ")
+        HStack(spacing: 6) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.primary)
+            Text(labelText.isEmpty ? "Claude" : labelText)
+                .font(.system(size: 11, weight: .semibold, design: .rounded))
+                .fontWidth(.condensed)
+                .foregroundColor(.primary)
+                .monospacedDigit()
+                .lineLimit(1)
+        }
+        .fixedSize()
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
     }
 }
 
@@ -28,7 +52,10 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Title Bar
-            HStack {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
                 Text("Claude Usage Pro")
                     .font(.system(.headline, design: .rounded))
                     .foregroundColor(.primary)

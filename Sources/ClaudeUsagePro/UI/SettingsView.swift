@@ -4,6 +4,7 @@ struct SettingsView: View {
     @AppStorage("refreshInterval") private var refreshInterval: Double = 300 // Default 5 mins
     @AppStorage("autoWakeUp") private var autoWakeUp: Bool = false
     @EnvironmentObject var appState: AppState
+    @State private var lastRefreshInterval: Double = 300
     
     var body: some View {
         ScrollView {
@@ -14,13 +15,15 @@ struct SettingsView: View {
                         .font(.headline)
                     
                     Picker("Refresh Interval", selection: $refreshInterval) {
+                        Text("30 Seconds").tag(30.0)
                         Text("1 Minute").tag(60.0)
                         Text("5 Minutes").tag(300.0)
-                        Text("15 Minutes").tag(900.0)
-                        Text("30 Minutes").tag(1800.0)
-                        Text("1 Hour").tag(3600.0)
                     }
                     .pickerStyle(.menu)
+                    .onChange(of: refreshInterval) { newValue in
+                        lastRefreshInterval = newValue
+                        appState.rescheduleAllSessions()
+                    }
                     
                     Toggle("Auto-Wake Up Sessions", isOn: $autoWakeUp)
                     
@@ -67,6 +70,7 @@ struct SettingsView: View {
             .padding(20)
         }
         .onAppear {
+            lastRefreshInterval = refreshInterval
             print("[DEBUG] SettingsView appeared")
         }
     }

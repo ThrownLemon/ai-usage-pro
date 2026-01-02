@@ -9,6 +9,7 @@ class AccountSession: ObservableObject, Identifiable {
     
     private var tracker: TrackerService?
     private var timer: Timer?
+    var onRefreshTick: (() -> Void)?
     
     init(account: ClaudeAccount) {
         self.id = account.id
@@ -25,23 +26,38 @@ class AccountSession: ObservableObject, Identifiable {
     func startMonitoring() {
         print("[DEBUG] Session: Starting monitoring for \(account.name)")
         fetchNow()
-        
+        scheduleRefreshTimer()
+    }
+    
+    func scheduleRefreshTimer() {
+        timer?.invalidate()
         let interval = UserDefaults.standard.double(forKey: "refreshInterval")
         let time = interval > 0 ? interval : 300
         
         // Timer for background refresh
         timer = Timer.scheduledTimer(withTimeInterval: time, repeats: true) { [weak self] _ in
             self?.fetchNow()
+            self?.onRefreshTick?()
         }
     }
     
     func ping() {
+        guard let usageData = account.usageData,
+              usageData.sessionPercentage == 0,
+              usageData.sessionReset == "Ready" else {
+            print("[DEBUG] Session: Ping skipped (session not ready).")
+            return
+        }
         print("[DEBUG] Session: Manual ping requested.")
         tracker?.onPingComplete = { [weak self] success in
-            print("[DEBUG] Session: Ping finished, refreshing data...")
-            // Wait a moment for Claude to process, then refresh
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                self?.fetchNow()
+            if success {
+                print("[DEBUG] Session: Ping finished, refreshing data...")
+                // Wait a moment for Claude to process, then refresh
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    self?.fetchNow()
+                }
+            } else {
+                print("[ERROR] Session: Ping failed.")
             }
         }
         tracker?.pingSession()
@@ -62,12 +78,13 @@ class AccountSession: ObservableObject, Identifiable {
                 // Update internal account data
                 self.account.usageData = usageData
                 
+                print("[DEBUG] UsageData \(self.account.name): session=\(Int(usageData.sessionPercentage * 100))% reset=\(usageData.sessionReset) weekly=\(Int(usageData.weeklyPercentage * 100))% reset=\(usageData.weeklyReset)")
+                
                 // Auto-Ping Logic
                 if usageData.sessionPercentage == 0, usageData.sessionReset == "Ready" {
                     if UserDefaults.standard.bool(forKey: "autoWakeUp") {
                         print("[DEBUG] Session: Auto-waking up \(self.account.name)...")
-                        // Debounce: only ping if we haven't just pinged (tracker logic handles concurrency but let's be safe)
-                        self.tracker?.pingSession()
+                        self.ping()
                     }
                 }
                 

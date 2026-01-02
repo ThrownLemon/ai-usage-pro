@@ -11,6 +11,9 @@ class AccountSession: ObservableObject, Identifiable {
     private var previousSessionPercentage: Double?
     private var previousWeeklyPercentage: Double?
 
+    // Track if we've received the first update to prevent notifications on app launch
+    private var hasReceivedFirstUpdate: Bool = false
+
     private var tracker: TrackerService?
     private var timer: Timer?
     var onRefreshTick: (() -> Void)?
@@ -149,8 +152,15 @@ class AccountSession: ObservableObject, Identifiable {
                 self.isFetching = false
 
                 // Store previous values before updating (for threshold crossing detection)
-                self.previousSessionPercentage = self.account.usageData?.sessionPercentage
-                self.previousWeeklyPercentage = self.account.usageData?.weeklyPercentage
+                // Skip on first update to prevent notifications on app launch with cached data
+                if self.hasReceivedFirstUpdate {
+                    self.previousSessionPercentage = self.account.usageData?.sessionPercentage
+                    self.previousWeeklyPercentage = self.account.usageData?.weeklyPercentage
+                } else {
+                    // First update - mark as received but don't set previous values
+                    // This ensures notifications only fire on actual crossings, not on app launch
+                    self.hasReceivedFirstUpdate = true
+                }
 
                 // Update internal account data
                 self.account.usageData = usageData

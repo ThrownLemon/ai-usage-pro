@@ -12,6 +12,13 @@ class NotificationManager: NSObject, ObservableObject {
     var onPermissionDenied: (() -> Void)?
     var onError: ((Error) -> Void)?
 
+    // MARK: - Rate Limiting
+
+    // Track last notification time per account per type to prevent spam
+    // Key format: "accountName:notificationType.identifier"
+    private var lastNotificationTimes: [String: Date] = [:]
+    private let cooldownInterval: TimeInterval = 5 * 60 // 5 minutes
+
     override init() {
         super.init()
         notificationCenter.delegate = self
@@ -88,6 +95,45 @@ class NotificationManager: NSObject, ObservableObject {
         )
     }
 
+    // MARK: - Rate Limiting Helpers
+
+    /// Generate a unique key for tracking notification cooldown per account and type
+    /// - Parameters:
+    ///   - accountName: The name of the account
+    ///   - type: The notification type
+    /// - Returns: A unique key string in format "accountName:type.identifier"
+    private func cooldownKey(accountName: String, type: NotificationType) -> String {
+        return "\(accountName):\(type.identifier)"
+    }
+
+    /// Check if cooldown period has passed since last notification of this type for this account
+    /// - Parameters:
+    ///   - accountName: The name of the account
+    ///   - type: The notification type
+    /// - Returns: true if cooldown has passed (can send notification), false if still in cooldown period
+    private func canSendNotification(accountName: String, type: NotificationType) -> Bool {
+        let key = cooldownKey(accountName: accountName, type: type)
+
+        guard let lastSent = lastNotificationTimes[key] else {
+            // Never sent this notification type for this account, so we can send
+            return true
+        }
+
+        let timeSinceLastSent = Date().timeIntervalSince(lastSent)
+        return timeSinceLastSent >= cooldownInterval
+    }
+
+    /// Record that a notification was sent for rate limiting tracking
+    /// - Parameters:
+    ///   - accountName: The name of the account
+    ///   - type: The notification type
+    private func recordNotificationSent(accountName: String, type: NotificationType) {
+        let key = cooldownKey(accountName: accountName, type: type)
+        lastNotificationTimes[key] = Date()
+    }
+
+    // MARK: - Permission Management
+
     // Request notification permission from the user
     func requestPermission() {
         notificationCenter.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
@@ -147,8 +193,16 @@ class NotificationManager: NSObject, ObservableObject {
 
     // Send a typed notification using the content builder
     func sendNotification(type: NotificationType, accountName: String, percentage: Double? = nil) {
+        // Check cooldown to prevent notification spam
+        guard canSendNotification(accountName: accountName, type: type) else {
+            return
+        }
+
         let content = buildNotificationContent(type: type, accountName: accountName, percentage: percentage)
         sendNotification(title: content.title, body: content.body, identifier: content.identifier)
+
+        // Record that notification was sent for rate limiting
+        recordNotificationSent(accountName: accountName, type: type)
     }
 
     // Remove pending notifications by identifier

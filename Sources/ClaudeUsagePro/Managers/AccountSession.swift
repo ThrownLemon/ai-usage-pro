@@ -115,7 +115,8 @@ class AccountSession: ObservableObject, Identifiable {
         for config in ThresholdDefinitions.sessionThresholds {
             if didCrossThreshold(previous: previousSessionPercentage, current: usageData.sessionPercentage, threshold: config.threshold) {
                 if NotificationSettings.shouldSend(type: config.notificationType) {
-                    NotificationManager.shared.sendNotification(type: config.notificationType, accountName: accountName)
+                    let thresholdPercent = Int(config.threshold * 100)
+                    NotificationManager.shared.sendNotification(type: config.notificationType, accountName: accountName, thresholdPercent: thresholdPercent)
                 }
             }
         }
@@ -124,7 +125,8 @@ class AccountSession: ObservableObject, Identifiable {
         for config in ThresholdDefinitions.weeklyThresholds {
             if didCrossThreshold(previous: previousWeeklyPercentage, current: usageData.weeklyPercentage, threshold: config.threshold) {
                 if NotificationSettings.shouldSend(type: config.notificationType) {
-                    NotificationManager.shared.sendNotification(type: config.notificationType, accountName: accountName)
+                    let thresholdPercent = Int(config.threshold * 100)
+                    NotificationManager.shared.sendNotification(type: config.notificationType, accountName: accountName, thresholdPercent: thresholdPercent)
                 }
             }
         }

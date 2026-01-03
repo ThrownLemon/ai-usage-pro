@@ -60,27 +60,22 @@ class NotificationManager: NSObject, ObservableObject {
 
     func buildNotificationContent(
         type: NotificationType,
-        accountName: String
+        accountName: String,
+        thresholdPercent: Int? = nil
     ) -> NotificationContent {
         let title: String
         let body: String
 
         switch type {
-        case .sessionThreshold75:
+        case .sessionThreshold75, .sessionThreshold90:
             title = "Usage Alert"
-            body = "\(accountName): Session usage has reached 75%"
+            let percent = thresholdPercent ?? 75
+            body = "\(accountName): Session usage has reached \(percent)%"
 
-        case .sessionThreshold90:
+        case .weeklyThreshold75, .weeklyThreshold90:
             title = "Usage Alert"
-            body = "\(accountName): Session usage has reached 90%"
-
-        case .weeklyThreshold75:
-            title = "Usage Alert"
-            body = "\(accountName): Weekly usage has reached 75%"
-
-        case .weeklyThreshold90:
-            title = "Usage Alert"
-            body = "\(accountName): Weekly usage has reached 90%"
+            let percent = thresholdPercent ?? 75
+            body = "\(accountName): Weekly usage has reached \(percent)%"
 
         case .sessionReady:
             title = "Session Ready"
@@ -191,13 +186,13 @@ class NotificationManager: NSObject, ObservableObject {
     }
 
     // Send a typed notification using the content builder
-    func sendNotification(type: NotificationType, accountName: String) {
+    func sendNotification(type: NotificationType, accountName: String, thresholdPercent: Int? = nil) {
         // Check cooldown to prevent notification spam
         guard canSendNotification(accountName: accountName, type: type) else {
             return
         }
 
-        let content = buildNotificationContent(type: type, accountName: accountName)
+        let content = buildNotificationContent(type: type, accountName: accountName, thresholdPercent: thresholdPercent)
         // Use cooldownKey as identifier to ensure uniqueness per account per type
         sendNotification(title: content.title, body: content.body, identifier: cooldownKey(accountName: accountName, type: type))
 

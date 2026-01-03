@@ -74,3 +74,54 @@ To make the app more accessible, you can:
   2. Click the **+** button under "Open at Login"
   3. Navigate to and select `ClaudeUsagePro` (from `/Applications` or your build directory)
   4. The app will now launch automatically when you log in
+
+## Usage
+
+### Getting Started
+
+1. **Launch the application**
+
+   Run the app using one of the methods from the Installation section above. Once launched, you'll see a new icon appear in your macOS menu bar.
+
+2. **Click the menu bar icon**
+
+   Click the Claude Usage Pro icon in your menu bar to open the main interface.
+
+3. **Add your first account**
+
+   - Click the **"Add Account"** button (or the **"+"** button if you already have accounts)
+   - A WebKit browser window will open showing the Claude.ai login page
+
+4. **Authenticate with Claude.ai**
+
+   - Log in to your Claude.ai account using your credentials in the WebKit browser window
+   - Once authentication is successful, the browser window will automatically close
+   - Your account will now appear in the app with its usage data
+
+5. **View your usage metrics**
+
+   Once authenticated, you'll see two visual gauges for each account:
+
+   - **Session Usage (Circular Gauge)** – Shows your current 5-hour rolling session usage
+   - **Weekly Usage (Linear Bar)** – Displays your 7-day rolling weekly usage
+
+   Both gauges update automatically based on your configured refresh interval (default: 5 minutes).
+
+### Understanding the Color-Coded Thresholds
+
+The visual gauges use intuitive color coding to help you monitor your usage at a glance:
+
+- **🟢 Green (0-70%)** – You have plenty of capacity remaining. Use Claude freely!
+- **🟡 Yellow (70-90%)** – You're approaching your limit. Consider moderating your usage.
+- **🔴 Red (90-100%)** – You're very close to or at your limit. Usage may be restricted soon.
+
+These thresholds apply to both session and weekly usage gauges, making it easy to see your status across both time windows.
+
+### Managing Multiple Accounts
+
+If you work with multiple Claude.ai accounts across different organizations:
+
+1. Click the **"+"** button to add additional accounts
+2. Each account will appear in the interface with its own usage gauges
+3. Switch between accounts to view their individual usage metrics
+4. Remove accounts by accessing the Settings panel (gear icon)

@@ -111,29 +111,19 @@ class AccountSession: ObservableObject, Identifiable {
     private func checkThresholdCrossingsAndNotify(usageData: UsageData) {
         let accountName = account.name
 
-        // Check session threshold crossings
-        if didCrossThreshold(previous: previousSessionPercentage, current: usageData.sessionPercentage, threshold: 0.75) {
-            if NotificationSettings.shouldSend(type: .sessionThreshold75) {
-                NotificationManager.shared.sendNotification(type: .sessionThreshold75, accountName: accountName)
-            }
-        }
+        // Data-driven threshold checks: (previous, current, threshold, notificationType)
+        let thresholdChecks: [(previous: Double?, current: Double, threshold: Double, type: NotificationManager.NotificationType)] = [
+            (previousSessionPercentage, usageData.sessionPercentage, 0.75, .sessionThreshold75),
+            (previousSessionPercentage, usageData.sessionPercentage, 0.90, .sessionThreshold90),
+            (previousWeeklyPercentage, usageData.weeklyPercentage, 0.75, .weeklyThreshold75),
+            (previousWeeklyPercentage, usageData.weeklyPercentage, 0.90, .weeklyThreshold90),
+        ]
 
-        if didCrossThreshold(previous: previousSessionPercentage, current: usageData.sessionPercentage, threshold: 0.90) {
-            if NotificationSettings.shouldSend(type: .sessionThreshold90) {
-                NotificationManager.shared.sendNotification(type: .sessionThreshold90, accountName: accountName)
-            }
-        }
-
-        // Check weekly threshold crossings
-        if didCrossThreshold(previous: previousWeeklyPercentage, current: usageData.weeklyPercentage, threshold: 0.75) {
-            if NotificationSettings.shouldSend(type: .weeklyThreshold75) {
-                NotificationManager.shared.sendNotification(type: .weeklyThreshold75, accountName: accountName)
-            }
-        }
-
-        if didCrossThreshold(previous: previousWeeklyPercentage, current: usageData.weeklyPercentage, threshold: 0.90) {
-            if NotificationSettings.shouldSend(type: .weeklyThreshold90) {
-                NotificationManager.shared.sendNotification(type: .weeklyThreshold90, accountName: accountName)
+        for check in thresholdChecks {
+            if didCrossThreshold(previous: check.previous, current: check.current, threshold: check.threshold) {
+                if NotificationSettings.shouldSend(type: check.type) {
+                    NotificationManager.shared.sendNotification(type: check.type, accountName: accountName)
+                }
             }
         }
 

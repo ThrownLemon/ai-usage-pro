@@ -60,8 +60,7 @@ class NotificationManager: NSObject, ObservableObject {
 
     func buildNotificationContent(
         type: NotificationType,
-        accountName: String,
-        percentage: Double? = nil
+        accountName: String
     ) -> NotificationContent {
         let title: String
         let body: String
@@ -102,7 +101,7 @@ class NotificationManager: NSObject, ObservableObject {
     ///   - accountName: The name of the account
     ///   - type: The notification type
     /// - Returns: A unique key string in format "accountName:type.identifier"
-    private func cooldownKey(accountName: String, type: NotificationType) -> String {
+    func cooldownKey(accountName: String, type: NotificationType) -> String {
         return "\(accountName):\(type.identifier)"
     }
 
@@ -192,14 +191,15 @@ class NotificationManager: NSObject, ObservableObject {
     }
 
     // Send a typed notification using the content builder
-    func sendNotification(type: NotificationType, accountName: String, percentage: Double? = nil) {
+    func sendNotification(type: NotificationType, accountName: String) {
         // Check cooldown to prevent notification spam
         guard canSendNotification(accountName: accountName, type: type) else {
             return
         }
 
-        let content = buildNotificationContent(type: type, accountName: accountName, percentage: percentage)
-        sendNotification(title: content.title, body: content.body, identifier: content.identifier)
+        let content = buildNotificationContent(type: type, accountName: accountName)
+        // Use cooldownKey as identifier to ensure uniqueness per account per type
+        sendNotification(title: content.title, body: content.body, identifier: cooldownKey(accountName: accountName, type: type))
 
         // Record that notification was sent for rate limiting
         recordNotificationSent(accountName: accountName, type: type)

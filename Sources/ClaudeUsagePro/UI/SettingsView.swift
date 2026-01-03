@@ -4,7 +4,6 @@ struct SettingsView: View {
     @AppStorage("refreshInterval") private var refreshInterval: Double = 300 // Default 5 mins
     @AppStorage("autoWakeUp") private var autoWakeUp: Bool = false
     @EnvironmentObject var appState: AppState
-    @State private var lastRefreshInterval: Double = 300
 
     // Notification settings using @AppStorage for reactive updates
     @AppStorage(NotificationSettings.enabledKey) private var notificationsEnabled: Bool = NotificationSettings.defaultEnabled
@@ -28,8 +27,7 @@ struct SettingsView: View {
                         Text("5 Minutes").tag(300.0)
                     }
                     .pickerStyle(.menu)
-                    .onChange(of: refreshInterval) { newValue in
-                        lastRefreshInterval = newValue
+                    .onChange(of: refreshInterval) { _ in
                         appState.rescheduleAllSessions()
                     }
                     
@@ -117,7 +115,6 @@ struct SettingsView: View {
             .padding(20)
         }
         .onAppear {
-            lastRefreshInterval = refreshInterval
             print("[DEBUG] SettingsView appeared")
         }
     }

@@ -162,15 +162,9 @@ struct UsageView: View {
                             }
                             
                             HStack(spacing: 6) {
-                                if account.type == .cursor {
-                                    Text("\(usage.cursorUsed ?? 0) of \(usage.cursorLimit ?? 0) requests used")
-                                        .font(.system(.caption, design: .rounded))
-                                        .foregroundColor(.secondary)
-                                } else {
-                                    Text(usage.sessionReset == "Ready" ? "Ready to start new session" : "Resets in: \(usage.sessionReset)")
-                                        .font(.system(.caption, design: .rounded))
-                                        .foregroundColor(.secondary)
-                                }
+                                Text(usage.sessionResetDisplay)
+                                    .font(.system(.caption, design: .rounded))
+                                    .foregroundColor(.secondary)
                                 Spacer()
                                 if isFetching {
                                     ProgressView()

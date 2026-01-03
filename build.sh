@@ -13,9 +13,11 @@ RESOURCES_DIR="$CONTENTS_DIR/Resources"
 echo "Building $APP_NAME in release mode..."
 swift build -c release
 
+echo "Cleaning up old build artifacts..."
+rm -rf "$APP_BUNDLE"
+
 echo "Creating .app bundle structure..."
-mkdir -p "$MACOS_DIR"
-mkdir -p "$RESOURCES_DIR"
+mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 echo "Copying executable..."
 cp "$BUILD_DIR/$APP_NAME" "$MACOS_DIR/"

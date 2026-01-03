@@ -4,7 +4,7 @@
 ![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-**Claude Usage Pro** is a native macOS menu bar application that helps you monitor your Claude.ai API usage across multiple accounts in real-time. Stay on top of your session and weekly usage limits with beautiful visual gauges that change color as you approach your limits.
+**Claude Usage Pro** is a native macOS menu bar application that helps you monitor your Claude.ai usage across multiple accounts. Stay on top of your session and weekly usage limits with beautiful visual gauges that change color as you approach your limits.
 
 Whether you're managing a single Claude account or juggling multiple accounts across different organizations, Claude Usage Pro provides an at-a-glance view of your remaining capacity with session (5-hour) and weekly (7-day) usage tracking. The app features persistent cookie storage for seamless multi-account management and can automatically wake up sessions when usage resets, ensuring you never miss a beat.
 
@@ -186,7 +186,7 @@ Contributions are welcome! Whether you're fixing bugs, adding features, or impro
 
 1. **Check existing issues** – Browse the [Issues](https://github.com/ThrownLemon/claude-usage-pro/issues) page to see if your bug or feature request already exists
 2. **Open a new issue** – If you've found a bug or have a feature idea, create a new issue to discuss it first
-3. **Submit a Pull Request** – Fork the repository, make your changes, and submit a [Pull Request](https://github.com/ThrownLemon/claude-usage-pro/pulls)
+3. **Submit a Pull Request** – Fork the repository, make your changes, and submit a [Pull Request](https://github.com/ThrownLemon/claude-usage-pro/compare)
 
 ### Development
 
@@ -200,7 +200,6 @@ For detailed information about the codebase architecture, data flow, and key com
 **Build commands** for development:
 ```bash
 # Build and run in debug mode
-swift build
 swift run
 
 # Build release version

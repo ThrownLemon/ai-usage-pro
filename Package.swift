@@ -14,10 +14,7 @@ let package = Package(
         .executableTarget(
             name: "ClaudeUsagePro",
             dependencies: [],
-            path: "Sources/ClaudeUsagePro",
-            resources: [
-                .process("Resources")
-            ]
+            path: "Sources/ClaudeUsagePro"
         )
     ]
 )

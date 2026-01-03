@@ -18,3 +18,9 @@ Whether you're managing a single Claude account or juggling multiple accounts ac
 - 🔔 **Auto-Ping/Wake-Up** – Automatically ping sessions when usage resets to 0% to keep them active
 - 💾 **Persistent Cookie Storage** – Securely stores session cookies locally for seamless authentication
 - ⚙️ **Configurable Refresh Intervals** – Customize how frequently usage data is fetched to balance accuracy and performance
+
+## Requirements
+
+- **macOS 13 (Ventura) or later** – The app requires macOS 13+ to run
+- **Swift 5.9+** – Required for building from source
+- **Xcode 15+** (optional) – Recommended for development, but not required for building with Swift CLI

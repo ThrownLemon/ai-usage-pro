@@ -1,10 +1,5 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Smooth Squircle Clip -->
-    <clipPath id="squircle-clip">
-      <rect x="0" y="0" width="512" height="512" rx="112" ry="112" />
-    </clipPath>
-
     <!-- Background Gradient: Professional Dark Slate -->
     <linearGradient id="bg-gradient" x1="256" y1="0" x2="256" y2="512" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#2E3440" />
@@ -18,22 +13,6 @@
       <stop offset="100%" stop-color="#7F5AF0" /> <!-- Purple -->
     </linearGradient>
 
-    <!-- Inner Shadow for Depth -->
-    <filter id="inner-shadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feComponentTransfer in="SourceAlpha">
-        <feFuncA type="table" tableValues="1 0" />
-      </feComponentTransfer>
-      <feGaussianBlur stdDeviation="4" />
-      <feOffset dx="0" dy="4" result="offsetblur" />
-      <feFlood flood-color="black" result="color" />
-      <feComposite in2="offsetblur" operator="in" />
-      <feComposite in2="SourceAlpha" operator="in" />
-      <feMerge>
-        <feMergeNode in="SourceGraphic" />
-        <feMergeNode />
-      </feMerge>
-    </filter>
-    
     <!-- Subtle Drop Shadow for the main shape -->
     <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
       <feGaussianBlur in="SourceAlpha" stdDeviation="15"/>
@@ -81,7 +60,6 @@
     </g>
     
     <!-- Glossy Highlight (Top) -->
-    <path d="M50 40 Q256 90 462 40 L462 256 Q462 256 462 256 L50 256 Z" fill="url(#gloss)" opacity="0.0"/> <!-- Placeholder for complex gloss if needed, keeping it clean for now -->
     <ellipse cx="256" cy="80" rx="180" ry="60" fill="white" fill-opacity="0.05" />
     
   </g>

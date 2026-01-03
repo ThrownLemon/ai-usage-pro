@@ -29,12 +29,13 @@ mkdir -p "$MACOS_DIR" "$RESOURCES_DIR"
 
 echo "Copying executable and resources..."
 cp "$EXECUTABLE_PATH" "$MACOS_DIR/"
-if [ -f "Resources/$APP_NAME.icns" ]; then
-    cp "Resources/$APP_NAME.icns" "$RESOURCES_DIR/"
-else
-    echo "Error: Icon file 'Resources/$APP_NAME.icns' not found. Build failed." >&2
+
+ICON_PATH="Resources/$APP_NAME.icns"
+if [ ! -f "$ICON_PATH" ]; then
+    echo "Error: App icon not found at $ICON_PATH" >&2
     exit 1
 fi
+cp "$ICON_PATH" "$RESOURCES_DIR/"
 
 echo "Creating Info.plist..."
 cat > "$CONTENTS_DIR/Info.plist" <<EOF

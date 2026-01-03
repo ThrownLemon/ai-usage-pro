@@ -163,3 +163,17 @@ The Settings panel also provides account management capabilities:
 - **View All Accounts**: See all your configured accounts in one place with their current usage status
 
 **Cookie Storage**: All account credentials are stored locally on your Mac using secure cookie persistence. Your authentication data never leaves your device.
+
+## How It Works
+
+Claude Usage Pro uses a lightweight, privacy-focused approach to track your Claude.ai usage:
+
+1. **Authentication via WebKit** – When you add an account, the app opens an embedded WebKit browser window where you log in to Claude.ai using your normal credentials. This ensures your login information is handled securely by Claude.ai's official authentication flow.
+
+2. **Session Cookie Persistence** – Once authenticated, the app captures and stores your session cookies locally on your Mac. These cookies are saved securely in your local user preferences, allowing the app to maintain persistent access to your account without requiring you to re-authenticate each time.
+
+3. **Periodic Usage Fetching** – The app uses a background WebKit process to periodically fetch usage data from Claude.ai's internal APIs. This happens at your configured refresh interval (default: every 5 minutes) and retrieves your current session and weekly usage metrics.
+
+4. **Local Processing** – All data processing happens entirely on your device. The app never sends your credentials or usage data to any third-party servers. Your authentication cookies and usage information remain private and stored only on your Mac.
+
+This architecture ensures that Claude Usage Pro provides real-time usage tracking while maintaining the security and privacy of your Claude.ai account credentials.

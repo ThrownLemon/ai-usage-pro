@@ -15,13 +15,19 @@ class AccountSession: ObservableObject, Identifiable {
     private var hasReceivedFirstUpdate: Bool = false
 
     private var tracker: TrackerService?
+    private var cursorTracker: CursorTrackerService?
     private var timer: Timer?
     var onRefreshTick: (() -> Void)?
     
     init(account: ClaudeAccount) {
         self.id = account.id
         self.account = account
-        self.tracker = TrackerService()
+        
+        if account.type == .claude {
+            self.tracker = TrackerService()
+        } else {
+            self.cursorTracker = CursorTrackerService()
+        }
         
         setupTracker()
     }
@@ -48,14 +54,19 @@ class AccountSession: ObservableObject, Identifiable {
         }
     }
     
-    func ping() {
+    func ping(isAuto: Bool = false) {
+        if isAuto && !UserDefaults.standard.bool(forKey: "autoWakeUp") {
+            print("[DEBUG] Session: Auto-ping cancelled (setting disabled).")
+            return
+        }
+
         guard let usageData = account.usageData,
               usageData.sessionPercentage == 0,
               usageData.sessionReset == "Ready" else {
             print("[DEBUG] Session: Ping skipped (session not ready).")
             return
         }
-        print("[DEBUG] Session: Manual ping requested.")
+        print("[DEBUG] Session: \(isAuto ? "Auto" : "Manual") ping requested.")
         tracker?.onPingComplete = { [weak self] success in
             if success {
                 print("[DEBUG] Session: Ping finished, refreshing data...")
@@ -73,7 +84,43 @@ class AccountSession: ObservableObject, Identifiable {
     func fetchNow() {
         guard !isFetching else { return }
         isFetching = true
-        tracker?.fetchUsage(cookies: account.cookies)
+        
+        if account.type == .claude {
+            tracker?.fetchUsage(cookies: account.cookies)
+        } else {
+            cursorTracker?.fetchCursorUsage { [weak self] result in
+                guard let self = self else { return }
+                DispatchQueue.main.async {
+                    self.isFetching = false
+                    switch result {
+                    case .success(let info):
+                        let percentage = info.planLimit > 0 ? Double(info.planUsed) / Double(info.planLimit) : 0
+                        let usageData = UsageData(
+                            sessionPercentage: percentage,
+                            sessionReset: "\(info.planUsed) / \(info.planLimit)",
+                            weeklyPercentage: 0,
+                            weeklyReset: "Ready",
+                            tier: info.planType ?? "Pro",
+                            email: info.email,
+                            fullName: nil,
+                            orgName: "Cursor",
+                            planType: info.planType,
+                            cursorUsed: info.planUsed,
+                            cursorLimit: info.planLimit
+                        )
+                        self.account.usageData = usageData
+                        
+                        if let email = info.email, self.account.name.starts(with: "Account ") || self.account.name.starts(with: "Cursor") {
+                            self.account.name = "Cursor (\(email))"
+                        }
+                        
+                        self.objectWillChange.send()
+                    case .failure(let error):
+                        print("[ERROR] Cursor Session: Fetch failed: \(error)")
+                    }
+                }
+            }
+        }
     }
     
     // MARK: - Threshold Detection
@@ -161,10 +208,10 @@ class AccountSession: ObservableObject, Identifiable {
                 self.checkThresholdCrossingsAndNotify(usageData: usageData)
 
                 // Auto-Ping Logic
-                if usageData.sessionPercentage == 0, usageData.sessionReset == "Ready" {
+                if self.didTransitionToReady(previousPercentage: self.previousSessionPercentage, currentPercentage: usageData.sessionPercentage, currentReset: usageData.sessionReset) {
                     if UserDefaults.standard.bool(forKey: "autoWakeUp") {
                         print("[DEBUG] Session: Auto-waking up \(self.account.name)...")
-                        self.ping()
+                        self.ping(isAuto: true)
                     }
                 }
 

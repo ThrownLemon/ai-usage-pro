@@ -1,6 +1,44 @@
 import Foundation
 import SQLite3
 
+enum CursorTrackerError: Error, LocalizedError {
+    case authNotFound
+    case fetchFailed(Error)
+    case badResponse(statusCode: Int)
+    case invalidJSONResponse(Error)
+    case invalidAPIURL
+
+    var errorDescription: String? {
+        switch self {
+        case .authNotFound:
+            return "Cursor authentication token not found in the local database."
+        case .fetchFailed(let error):
+            return "Failed to fetch usage summary: \(error.localizedDescription)"
+        case .badResponse(let statusCode):
+            return "Received an invalid server response (Status Code: \(statusCode))."
+        case .invalidJSONResponse(let error):
+            return "Failed to parse the JSON response: \(error.localizedDescription)"
+        case .invalidAPIURL:
+            return "The API endpoint URL is invalid."
+        }
+    }
+}
+
+private struct CursorAPIResponse: Codable {
+    let individualUsage: IndividualUsage
+    let membershipType: String?
+}
+
+private struct IndividualUsage: Codable {
+    let plan: Plan
+}
+
+private struct Plan: Codable {
+    let used: Int
+    let limit: Int
+    let remaining: Int
+}
+
 struct CursorAuthData {
     let accessToken: String?
     let email: String?
@@ -24,55 +62,44 @@ class CursorTrackerService {
         return FileManager.default.fileExists(atPath: path)
     }
     
-    func fetchCursorUsage(completion: @escaping (Result<CursorUsageInfo, Error>) -> Void) {
+    func fetchCursorUsage() async throws -> CursorUsageInfo {
         guard let auth = readAuthFromStateDB(), let token = auth.accessToken else {
-            completion(.failure(NSError(domain: "CursorTracker", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cursor auth not found"])))
-            return
+            throw CursorTrackerError.authNotFound
         }
         
-        guard let url = URL(string: "\(cursorAPIBase)/auth/usage-summary") else { return }
+        guard let url = URL(string: "\(cursorAPIBase)/auth/usage-summary") else {
+            throw CursorTrackerError.invalidAPIURL
+        }
         
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         
-        URLSession.shared.dataTask(with: request) { data, response, error in
-            if let error = error {
-                completion(.failure(error))
-                return
-            }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw CursorTrackerError.badResponse(statusCode: 0)
+        }
+        
+        guard httpResponse.statusCode == 200 else {
+            throw CursorTrackerError.badResponse(statusCode: httpResponse.statusCode)
+        }
+        
+        do {
+            let apiResponse = try JSONDecoder().decode(CursorAPIResponse.self, from: data)
+            let plan = apiResponse.individualUsage.plan
             
-            guard let data = data, let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                completion(.failure(NSError(domain: "CursorTracker", code: 2, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch usage summary"])))
-                return
-            }
-            
-            do {
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let individualUsage = json["individualUsage"] as? [String: Any],
-                   let plan = individualUsage["plan"] as? [String: Any] {
-                    
-                    let used = plan["used"] as? Int ?? 0
-                    let limit = plan["limit"] as? Int ?? 0
-                    let remaining = plan["remaining"] as? Int ?? 0
-                    let membershipType = json["membershipType"] as? String ?? auth.membershipType
-                    
-                    let info = CursorUsageInfo(
-                        email: auth.email,
-                        planUsed: used,
-                        planLimit: limit,
-                        planRemaining: remaining,
-                        planType: membershipType
-                    )
-                    completion(.success(info))
-                } else {
-                    completion(.failure(NSError(domain: "CursorTracker", code: 3, userInfo: [NSLocalizedDescriptionKey: "Invalid JSON response"])))
-                }
-            } catch {
-                completion(.failure(error))
-            }
-        }.resume()
+            return CursorUsageInfo(
+                email: auth.email,
+                planUsed: plan.used,
+                planLimit: plan.limit,
+                planRemaining: plan.remaining,
+                planType: apiResponse.membershipType ?? auth.membershipType
+            )
+        } catch {
+            throw CursorTrackerError.invalidJSONResponse(error)
+        }
     }
     
     private func readAuthFromStateDB() -> CursorAuthData? {

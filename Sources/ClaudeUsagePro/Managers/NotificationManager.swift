@@ -4,8 +4,10 @@ import UserNotifications
 class NotificationManager: NSObject, ObservableObject {
     static let shared = NotificationManager()
 
-    private let notificationCenter = UNUserNotificationCenter.current()
+    // Notification center is optional - may not be available when running outside app bundle
+    private var notificationCenter: UNUserNotificationCenter?
     @Published var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    @Published var isAvailable: Bool = false
 
     // Callback-based pattern following TrackerService
     var onPermissionGranted: (() -> Void)?
@@ -21,11 +23,27 @@ class NotificationManager: NSObject, ObservableObject {
 
     override init() {
         super.init()
-        notificationCenter.delegate = self
+        initializeNotificationCenter()
+    }
+
+    /// Safely initialize the notification center (may fail when running outside app bundle)
+    private func initializeNotificationCenter() {
+        // Check if we're running in a proper app bundle to avoid crash
+        guard Bundle.main.bundleIdentifier != nil else {
+            print("[WARN] NotificationManager: No bundle identifier - notifications disabled (running via swift run?)")
+            isAvailable = false
+            return
+        }
+
+        let center = UNUserNotificationCenter.current()
+        notificationCenter = center
+        center.delegate = self
+        isAvailable = true
         checkAuthorizationStatus()
     }
 
     // MARK: - Notification Types
+
 
     enum NotificationType {
         case sessionThreshold75
@@ -130,7 +148,12 @@ class NotificationManager: NSObject, ObservableObject {
 
     // Request notification permission from the user
     func requestPermission() {
-        notificationCenter.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
+        guard let center = notificationCenter else {
+            print("[DEBUG] NotificationManager: Skipping permission request - not available")
+            return
+        }
+
+        center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
             DispatchQueue.main.async {
                 if let error = error {
                     self?.onError?(error)
@@ -150,7 +173,9 @@ class NotificationManager: NSObject, ObservableObject {
 
     // Check current authorization status
     func checkAuthorizationStatus() {
-        notificationCenter.getNotificationSettings { [weak self] settings in
+        guard let center = notificationCenter else { return }
+
+        center.getNotificationSettings { [weak self] settings in
             DispatchQueue.main.async {
                 self?.authorizationStatus = settings.authorizationStatus
             }
@@ -159,6 +184,8 @@ class NotificationManager: NSObject, ObservableObject {
 
     // Send a notification with the given content
     func sendNotification(title: String, body: String, identifier: String) {
+        guard let center = notificationCenter else { return }
+
         // Check if notifications are authorized
         guard authorizationStatus == .authorized else {
             return
@@ -176,7 +203,7 @@ class NotificationManager: NSObject, ObservableObject {
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         // Schedule the notification
-        notificationCenter.add(request) { [weak self] error in
+        center.add(request) { [weak self] error in
             if let error = error {
                 DispatchQueue.main.async {
                     self?.onError?(error)
@@ -202,22 +229,22 @@ class NotificationManager: NSObject, ObservableObject {
 
     // Remove pending notifications by identifier
     func removePendingNotification(identifier: String) {
-        notificationCenter.removePendingNotificationRequests(withIdentifiers: [identifier])
+        notificationCenter?.removePendingNotificationRequests(withIdentifiers: [identifier])
     }
 
     // Remove all pending notifications
     func removeAllPendingNotifications() {
-        notificationCenter.removeAllPendingNotificationRequests()
+        notificationCenter?.removeAllPendingNotificationRequests()
     }
 
     // Remove delivered notifications by identifier
     func removeDeliveredNotification(identifier: String) {
-        notificationCenter.removeDeliveredNotifications(withIdentifiers: [identifier])
+        notificationCenter?.removeDeliveredNotifications(withIdentifiers: [identifier])
     }
 
     // Remove all delivered notifications
     func removeAllDeliveredNotifications() {
-        notificationCenter.removeAllDeliveredNotifications()
+        notificationCenter?.removeAllDeliveredNotifications()
     }
 }
 

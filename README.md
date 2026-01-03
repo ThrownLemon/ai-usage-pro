@@ -177,3 +177,38 @@ Claude Usage Pro uses a lightweight, privacy-focused approach to track your Clau
 4. **Local Processing** – All data processing happens entirely on your device. The app never sends your credentials or usage data to any third-party servers. Your authentication cookies and usage information remain private and stored only on your Mac.
 
 This architecture ensures that Claude Usage Pro provides real-time usage tracking while maintaining the security and privacy of your Claude.ai account credentials.
+
+## Contributing
+
+Contributions are welcome! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
+
+### How to Contribute
+
+1. **Check existing issues** – Browse the [Issues](https://github.com/yourusername/claude-usage-pro/issues) page to see if your bug or feature request already exists
+2. **Open a new issue** – If you've found a bug or have a feature idea, create a new issue to discuss it first
+3. **Submit a Pull Request** – Fork the repository, make your changes, and submit a [Pull Request](https://github.com/yourusername/claude-usage-pro/pulls)
+
+### Development
+
+For detailed information about the codebase architecture, data flow, and key components, please refer to [CLAUDE.md](./CLAUDE.md). This file contains:
+
+- Complete architecture overview and data flow diagrams
+- Detailed component descriptions (AuthManager, TrackerService, AccountSession, etc.)
+- Cookie persistence implementation details
+- UserDefaults keys and settings structure
+
+**Build commands** for development:
+```bash
+# Build and run in debug mode
+swift build
+swift run
+
+# Build release version
+swift build -c release
+```
+
+See [CLAUDE.md](./CLAUDE.md) for more detailed build instructions and architecture documentation.
+
+## License
+
+This project is currently unlicensed. Please contact the repository owner for licensing information.

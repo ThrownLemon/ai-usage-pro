@@ -277,6 +277,12 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
         }
     }
     
+    /// Handles a finished navigation in the hidden WKWebView and either runs the ping flow or extracts usage data from the loaded page.
+    /// 
+    /// When `pendingPing` is true, triggers the ping script execution and returns. Otherwise, injects and executes a JavaScript usage script that gathers organization, usage, stats, and user information, parses the returned payload into a `UsageData` instance, and invokes `onUpdate` with that instance. Logs JavaScript evaluation errors to the debug console.
+    /// - Parameters:
+    ///   - webView: The WKWebView that finished loading.
+    ///   - navigation: The navigation object representing the finished load.
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         print("[DEBUG] TrackerService: Page finished loading. Injecting JS...")
         

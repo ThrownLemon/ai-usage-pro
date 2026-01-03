@@ -276,6 +276,8 @@ class AppState: ObservableObject {
         loadAccounts()
     }
     
+    /// Creates a new Claude account using the provided HTTP cookies, adds it to the session list, persists the accounts, subscribes to session changes, and begins monitoring the session.
+    /// - Parameter cookies: HTTP authentication cookies associated with the new account.
     func addAccount(cookies: [HTTPCookie]) {
         let newAccount = ClaudeAccount(
             id: UUID(),
@@ -291,6 +293,11 @@ class AppState: ObservableObject {
         session.startMonitoring()
     }
 
+    /// Creates and registers a new "Cursor Monitoring" account and begins monitoring it.
+    /// 
+    /// The function creates a `ClaudeAccount` with type `.cursor`, wraps it in an `AccountSession`,
+    /// appends the session to `sessions`, persists the account list, subscribes to session changes,
+    /// and starts the session's monitoring.
     func addCursorAccount() {
         let newAccount = ClaudeAccount(
             id: UUID(),

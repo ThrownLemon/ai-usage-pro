@@ -43,6 +43,8 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         usageData = try container.decodeIfPresent(UsageData.self, forKey: .usageData)
     }
     
+    /// Encodes the account's stored properties (`id`, `name`, `type`, `cookieProps`, `usageData`) into the provided encoder using the `CodingKeys`.
+    /// - Throws: An encoding error if one of the properties fails to encode.
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(id, forKey: .id)

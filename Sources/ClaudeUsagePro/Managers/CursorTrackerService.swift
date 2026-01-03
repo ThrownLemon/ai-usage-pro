@@ -57,11 +57,20 @@ class CursorTrackerService {
     private let cursorAPIBase = "https://api2.cursor.sh"
     private let stateDBPath = "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb"
     
+    /// Checks whether the Cursor state database exists in the user's Application Support directory.
+    /// - Returns: `true` if the Cursor state database file exists at ~/Library/Application Support/Cursor/User/globalStorage/state.vscdb, `false` otherwise.
     func isInstalled() -> Bool {
         let path = NSString(string: "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb").expandingTildeInPath
         return FileManager.default.fileExists(atPath: path)
     }
     
+    /// Fetches the current Cursor usage summary for the locally stored account.
+    /// - Returns: A `CursorUsageInfo` containing the account email (if available), plan usage (`planUsed`, `planLimit`, `planRemaining`), and `planType` (if available).
+    /// - Throws:
+    ///   - `CursorTrackerError.authNotFound` if authentication data or access token is missing.
+    ///   - `CursorTrackerError.invalidAPIURL` if the usage-summary URL cannot be constructed.
+    ///   - `CursorTrackerError.badResponse(statusCode:)` if the HTTP response is missing or has a non-200 status code.
+    ///   - `CursorTrackerError.invalidJSONResponse(_)` if the API response cannot be decoded as the expected JSON.
     func fetchCursorUsage() async throws -> CursorUsageInfo {
         guard let auth = readAuthFromStateDB(), let token = auth.accessToken else {
             throw CursorTrackerError.authNotFound
@@ -102,6 +111,11 @@ class CursorTrackerService {
         }
     }
     
+    /// Reads Cursor authentication data from the local Cursor state database.
+    /// 
+    /// Extracts the stored `accessToken`, cached email, and Stripe membership type (if present)
+    /// and returns them wrapped in a `CursorAuthData`.
+    /// - Returns: A `CursorAuthData` containing any found `accessToken`, `email`, and `membershipType`, or `nil` if the state database is missing or cannot be read.
     private func readAuthFromStateDB() -> CursorAuthData? {
         let path = NSString(string: stateDBPath).expandingTildeInPath
         guard FileManager.default.fileExists(atPath: path) else { return nil }

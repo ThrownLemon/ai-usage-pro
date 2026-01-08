@@ -1,0 +1,286 @@
+import Foundation
+import os
+
+enum GLMTrackerError: Error, LocalizedError {
+    case tokenNotFound
+    case fetchFailed(Error)
+    case badResponse(statusCode: Int)
+    case invalidJSONResponse(Error)
+    case invalidAPIURL
+
+    var errorDescription: String? {
+        switch self {
+        case .tokenNotFound:
+            return "GLM API token not found."
+        case .fetchFailed(let error):
+            return "Failed to fetch usage: \(error.localizedDescription)"
+        case .badResponse(let statusCode):
+            return "Received an invalid server response (Status Code: \(statusCode))."
+        case .invalidJSONResponse(let error):
+            return "Failed to parse the JSON response: \(error.localizedDescription)"
+        case .invalidAPIURL:
+            return "The API endpoint URL is invalid."
+        }
+    }
+}
+
+// MARK: - GLM API Response Models
+
+private struct GLMUsageResponse: Codable {
+    let code: Int?
+    let msg: String?
+    let data: GLMUsageData?
+}
+
+private struct GLMUsageData: Codable {
+    let limits: [GLMLimitItem]?
+}
+
+private struct GLMLimitItem: Codable {
+    let type: String
+    let percentage: Double?
+    let currentValue: Double?
+    let total: Double?
+    let usageDetails: [GLMUsageDetail]?
+    let usage: Double?
+}
+
+private struct GLMUsageDetail: Codable {
+    let currentValue: Double?
+    let total: Double?
+}
+
+
+struct GLMUsageInfo {
+    let sessionPercentage: Double    // 5-hour token limit
+    let monthlyPercentage: Double    // 1-month MCP limit
+    let sessionUsed: Double
+    let sessionLimit: Double
+    let monthlyUsed: Double
+    let monthlyLimit: Double
+}
+
+class GLMTrackerService {
+    private let category = Log.Category.glmTracker
+    private let baseURL: String
+    private let modelUsageURL: String
+    private let toolUsageURL: String
+    private let quotaLimitURL: String
+
+    init() {
+        // Determine platform based on ANTHROPIC_BASE_URL environment variable (like the plugin)
+        let anthropicBaseURL = ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"] ?? ""
+
+        if anthropicBaseURL.contains("api.z.ai") {
+            // ZAI platform
+            if let url = URL(string: anthropicBaseURL),
+               let baseDomain = URL(string: "\(url.scheme ?? "https")://\(url.host ?? "")") {
+                let domain = baseDomain.absoluteString
+                baseURL = "\(domain)/api/monitor/usage"
+                modelUsageURL = "\(domain)/api/monitor/usage/model-usage"
+                toolUsageURL = "\(domain)/api/monitor/usage/tool-usage"
+                quotaLimitURL = "\(domain)/api/monitor/usage/quota/limit"
+            } else {
+                baseURL = "https://api.z.ai/api/monitor/usage"
+                modelUsageURL = "https://api.z.ai/api/monitor/usage/model-usage"
+                toolUsageURL = "https://api.z.ai/api/monitor/usage/tool-usage"
+                quotaLimitURL = "https://api.z.ai/api/monitor/usage/quota/limit"
+            }
+        } else if anthropicBaseURL.contains("open.bigmodel.cn") || anthropicBaseURL.contains("dev.bigmodel.cn") {
+            // ZHIPU platform
+            if let url = URL(string: anthropicBaseURL),
+               let baseDomain = URL(string: "\(url.scheme ?? "https")://\(url.host ?? "")") {
+                let domain = baseDomain.absoluteString
+                baseURL = "\(domain)/api/monitor/usage"
+                modelUsageURL = "\(domain)/api/monitor/usage/model-usage"
+                toolUsageURL = "\(domain)/api/monitor/usage/tool-usage"
+                quotaLimitURL = "\(domain)/api/monitor/usage/quota/limit"
+            } else {
+                baseURL = "https://open.bigmodel.cn/api/monitor/usage"
+                modelUsageURL = "https://open.bigmodel.cn/api/monitor/usage/model-usage"
+                toolUsageURL = "https://open.bigmodel.cn/api/monitor/usage/tool-usage"
+                quotaLimitURL = "https://open.bigmodel.cn/api/monitor/usage/quota/limit"
+            }
+        } else {
+            // Default to ZHIPU if no environment variable or unrecognized URL
+            baseURL = "https://open.bigmodel.cn/api/monitor/usage"
+            modelUsageURL = "https://open.bigmodel.cn/api/monitor/usage/model-usage"
+            toolUsageURL = "https://open.bigmodel.cn/api/monitor/usage/tool-usage"
+            quotaLimitURL = "https://open.bigmodel.cn/api/monitor/usage/quota/limit"
+        }
+    }
+
+    func fetchGLMUsage(apiToken: String) async throws -> GLMUsageInfo {
+        // Get current time range for the query (last 5 hours for session)
+        let now = Date()
+        let fiveHoursAgo = now.addingTimeInterval(-5 * 60 * 60)
+
+        // The quota/limit endpoint returns current usage data without requiring time range params
+        // Time variables kept for future use with model-usage and tool-usage endpoints
+        _ = fiveHoursAgo
+        _ = now
+
+        // Fetch quota limits which gives us both session (TOKENS_LIMIT) and monthly (TIME_LIMIT) data
+        guard let url = URL(string: quotaLimitURL) else {
+            throw GLMTrackerError.invalidAPIURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        if let jsonObject = try? JSONSerialization.jsonObject(with: data),
+           let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted),
+           let prettyString = String(data: prettyData, encoding: .utf8) {
+            Log.debug(category, "Raw API Response:\n\(prettyString)")
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GLMTrackerError.badResponse(statusCode: 0)
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw GLMTrackerError.badResponse(statusCode: httpResponse.statusCode)
+        }
+
+        do {
+            let apiResponse = try JSONDecoder().decode(GLMUsageResponse.self, from: data)
+
+            guard let limits = apiResponse.data?.limits else {
+                throw GLMTrackerError.invalidJSONResponse(NSError(domain: "GLMTracker", code: -1, userInfo: [NSLocalizedDescriptionKey: "No limits data in response"]))
+            }
+
+            var sessionPercentage: Double = 0
+            var sessionUsed: Double = 0
+            var sessionLimit: Double = 0
+            var monthlyPercentage: Double = 0
+            var monthlyUsed: Double = 0
+            var monthlyLimit: Double = 0
+
+            for limit in limits {
+                switch limit.type {
+                case "TOKENS_LIMIT":
+                    // 5-hour session limit
+                    sessionPercentage = limit.percentage ?? 0
+                    if let current = limit.currentValue, let total = limit.total {
+                        sessionUsed = current
+                        sessionLimit = total
+                    } else if let details = limit.usageDetails, !details.isEmpty,
+                          let current = details.first?.currentValue, let total = details.first?.total {
+                        sessionUsed = current
+                        sessionLimit = total
+                    }
+                case "TIME_LIMIT":
+                    // 1-month MCP limit
+                    monthlyPercentage = limit.percentage ?? 0
+                    if let current = limit.currentValue, let total = limit.total {
+                        monthlyUsed = current
+                        monthlyLimit = total
+                    } else if let usage = limit.usage {
+                        monthlyUsed = limit.currentValue ?? 0
+                        monthlyLimit = usage
+                    } else if let details = limit.usageDetails, !details.isEmpty,
+                          let current = details.first?.currentValue, let total = details.first?.total {
+                        monthlyUsed = current
+                        monthlyLimit = total
+                    }
+                default:
+                    break
+                }
+            }
+
+            Log.info(category, "Parsed Info - Session: \(sessionUsed)/\(sessionLimit) (\(sessionPercentage)%), Monthly: \(monthlyUsed)/\(monthlyLimit) (\(monthlyPercentage)%)")
+
+            return GLMUsageInfo(
+                sessionPercentage: sessionPercentage / 100.0,  // Convert to 0-1 range
+                monthlyPercentage: monthlyPercentage / 100.0,
+                sessionUsed: sessionUsed,
+                sessionLimit: sessionLimit,
+                monthlyUsed: monthlyUsed,
+                monthlyLimit: monthlyLimit
+            )
+        } catch {
+            throw GLMTrackerError.invalidJSONResponse(error)
+        }
+    }
+
+    // Additional endpoints from the plugin (for future use)
+    func fetchModelUsage(apiToken: String, startTime: Date, endTime: Date) async throws -> Data {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let startTimeStr = dateFormatter.string(from: startTime)
+        let endTimeStr = dateFormatter.string(from: endTime)
+
+        guard var urlComponents = URLComponents(string: modelUsageURL) else {
+            throw GLMTrackerError.invalidAPIURL
+        }
+
+        urlComponents.queryItems = [
+            URLQueryItem(name: "startTime", value: startTimeStr),
+            URLQueryItem(name: "endTime", value: endTimeStr)
+        ]
+
+        guard let url = urlComponents.url else {
+            throw GLMTrackerError.invalidAPIURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GLMTrackerError.badResponse(statusCode: 0)
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw GLMTrackerError.badResponse(statusCode: httpResponse.statusCode)
+        }
+
+        return data
+    }
+
+    func fetchToolUsage(apiToken: String, startTime: Date, endTime: Date) async throws -> Data {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        let startTimeStr = dateFormatter.string(from: startTime)
+        let endTimeStr = dateFormatter.string(from: endTime)
+
+        guard var urlComponents = URLComponents(string: toolUsageURL) else {
+            throw GLMTrackerError.invalidAPIURL
+        }
+
+        urlComponents.queryItems = [
+            URLQueryItem(name: "startTime", value: startTimeStr),
+            URLQueryItem(name: "endTime", value: endTimeStr)
+        ]
+
+        guard let url = urlComponents.url else {
+            throw GLMTrackerError.invalidAPIURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw GLMTrackerError.badResponse(statusCode: 0)
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw GLMTrackerError.badResponse(statusCode: httpResponse.statusCode)
+        }
+
+        return data
+    }
+}

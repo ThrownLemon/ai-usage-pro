@@ -1,9 +1,11 @@
 import Foundation
 import UserNotifications
 import Combine
+import os
 
 class NotificationManager: NSObject, ObservableObject {
     static let shared = NotificationManager()
+    private let category = Log.Category.notifications
 
     // Notification center is optional - may not be available when running outside app bundle
     private var notificationCenter: UNUserNotificationCenter?
@@ -31,7 +33,7 @@ class NotificationManager: NSObject, ObservableObject {
     private func initializeNotificationCenter() {
         // Check if we're running in a proper app bundle to avoid crash
         guard Bundle.main.bundleIdentifier != nil else {
-            print("[WARN] NotificationManager: No bundle identifier - notifications disabled (running via swift run?)")
+            Log.warning(category, "No bundle identifier - notifications disabled (running via swift run?)")
             isAvailable = false
             return
         }
@@ -112,20 +114,20 @@ class NotificationManager: NSObject, ObservableObject {
 
     /// Generate a unique key for tracking notification cooldown per account and type
     /// - Parameters:
-    ///   - accountName: The name of the account
+    ///   - accountId: The stable UUID of the account (not name, which can change)
     ///   - type: The notification type
-    /// - Returns: A unique key string in format "accountName:type.identifier"
-    func cooldownKey(accountName: String, type: NotificationType) -> String {
-        return "\(accountName):\(type.identifier)"
+    /// - Returns: A unique key string in format "accountId:type.identifier"
+    func cooldownKey(accountId: UUID, type: NotificationType) -> String {
+        return "\(accountId.uuidString):\(type.identifier)"
     }
 
     /// Check if cooldown period has passed since last notification of this type for this account
     /// - Parameters:
-    ///   - accountName: The name of the account
+    ///   - accountId: The stable UUID of the account
     ///   - type: The notification type
     /// - Returns: true if cooldown has passed (can send notification), false if still in cooldown period
-    private func canSendNotification(accountName: String, type: NotificationType) -> Bool {
-        let key = cooldownKey(accountName: accountName, type: type)
+    private func canSendNotification(accountId: UUID, type: NotificationType) -> Bool {
+        let key = cooldownKey(accountId: accountId, type: type)
 
         guard let lastSent = lastNotificationTimes[key] else {
             // Never sent this notification type for this account, so we can send
@@ -138,10 +140,10 @@ class NotificationManager: NSObject, ObservableObject {
 
     /// Record that a notification was sent for rate limiting tracking
     /// - Parameters:
-    ///   - accountName: The name of the account
+    ///   - accountId: The stable UUID of the account
     ///   - type: The notification type
-    private func recordNotificationSent(accountName: String, type: NotificationType) {
-        let key = cooldownKey(accountName: accountName, type: type)
+    private func recordNotificationSent(accountId: UUID, type: NotificationType) {
+        let key = cooldownKey(accountId: accountId, type: type)
         lastNotificationTimes[key] = Date()
     }
 
@@ -150,7 +152,7 @@ class NotificationManager: NSObject, ObservableObject {
     // Request notification permission from the user
     func requestPermission() {
         guard let center = notificationCenter else {
-            print("[DEBUG] NotificationManager: Skipping permission request - not available")
+            Log.debug(category, "Skipping permission request - not available")
             return
         }
 
@@ -214,18 +216,18 @@ class NotificationManager: NSObject, ObservableObject {
     }
 
     // Send a typed notification using the content builder
-    func sendNotification(type: NotificationType, accountName: String, thresholdPercent: Int? = nil) {
+    func sendNotification(type: NotificationType, accountId: UUID, accountName: String, thresholdPercent: Int? = nil) {
         // Check cooldown to prevent notification spam
-        guard canSendNotification(accountName: accountName, type: type) else {
+        guard canSendNotification(accountId: accountId, type: type) else {
             return
         }
 
         let content = buildNotificationContent(type: type, accountName: accountName, thresholdPercent: thresholdPercent)
         // Use cooldownKey as identifier to ensure uniqueness per account per type
-        sendNotification(title: content.title, body: content.body, identifier: cooldownKey(accountName: accountName, type: type))
+        sendNotification(title: content.title, body: content.body, identifier: cooldownKey(accountId: accountId, type: type))
 
         // Record that notification was sent for rate limiting
-        recordNotificationSent(accountName: accountName, type: type)
+        recordNotificationSent(accountId: accountId, type: type)
     }
 
     // Remove pending notifications by identifier

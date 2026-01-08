@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "ClaudeUsagePro",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v14)  // Updated for @Observable support
     ],
     products: [
         .executable(name: "ClaudeUsagePro", targets: ["ClaudeUsagePro"])
@@ -18,6 +18,11 @@ let package = Package(
             linkerSettings: [
                 .linkedLibrary("sqlite3")
             ]
+        ),
+        .testTarget(
+            name: "ClaudeUsageProTests",
+            dependencies: ["ClaudeUsagePro"],
+            path: "Tests/ClaudeUsageProTests"
         )
     ]
 )

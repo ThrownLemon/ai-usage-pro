@@ -1,0 +1,92 @@
+import XCTest
+@testable import ClaudeUsagePro
+
+final class KeychainServiceTests: XCTestCase {
+    private let testKey = "test_keychain_key_\(UUID().uuidString)"
+
+    override func tearDownWithError() throws {
+        // Clean up after each test
+        try? KeychainService.delete(forKey: testKey)
+    }
+
+    func testSaveAndLoadData() throws {
+        // Given
+        let testData = "Hello, Keychain!".data(using: .utf8)!
+
+        // When
+        try KeychainService.save(testData, forKey: testKey)
+        let loadedData = try KeychainService.load(forKey: testKey)
+
+        // Then
+        XCTAssertEqual(loadedData, testData)
+    }
+
+    func testSaveAndLoadString() throws {
+        // Given
+        let testString = "Test String Value"
+
+        // When
+        try KeychainService.save(testString, forKey: testKey)
+        let loadedString = try KeychainService.loadString(forKey: testKey)
+
+        // Then
+        XCTAssertEqual(loadedString, testString)
+    }
+
+    func testLoadNonexistentKey() throws {
+        // When
+        let result = try KeychainService.load(forKey: "nonexistent_key_12345")
+
+        // Then
+        XCTAssertNil(result)
+    }
+
+    func testDeleteKey() throws {
+        // Given
+        let testData = "Delete me".data(using: .utf8)!
+        try KeychainService.save(testData, forKey: testKey)
+
+        // When
+        try KeychainService.delete(forKey: testKey)
+        let loadedData = try KeychainService.load(forKey: testKey)
+
+        // Then
+        XCTAssertNil(loadedData)
+    }
+
+    func testOverwriteExistingKey() throws {
+        // Given
+        let originalData = "Original".data(using: .utf8)!
+        let newData = "Updated".data(using: .utf8)!
+
+        // When
+        try KeychainService.save(originalData, forKey: testKey)
+        try KeychainService.save(newData, forKey: testKey)
+        let loadedData = try KeychainService.load(forKey: testKey)
+
+        // Then
+        XCTAssertEqual(loadedData, newData)
+    }
+
+    func testCookiesKey() {
+        // Given
+        let accountId = UUID()
+
+        // When
+        let key = KeychainService.cookiesKey(for: accountId)
+
+        // Then
+        XCTAssertEqual(key, "cookies_\(accountId.uuidString)")
+    }
+
+    func testApiTokenKey() {
+        // Given
+        let accountId = UUID()
+
+        // When
+        let key = KeychainService.apiTokenKey(for: accountId)
+
+        // Then
+        XCTAssertEqual(key, "apiToken_\(accountId.uuidString)")
+    }
+}

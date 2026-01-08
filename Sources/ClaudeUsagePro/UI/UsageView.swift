@@ -3,12 +3,16 @@ import SwiftUI
 struct UsageView: View {
     let account: ClaudeAccount
     let isFetching: Bool
+    var lastError: Error?
     var onPing: (() -> Void)?
-    
-    init(account: ClaudeAccount, isFetching: Bool, onPing: (() -> Void)? = nil) {
+    var onRetry: (() -> Void)?
+
+    init(account: ClaudeAccount, isFetching: Bool, lastError: Error? = nil, onPing: (() -> Void)? = nil, onRetry: (() -> Void)? = nil) {
         self.account = account
         self.isFetching = isFetching
+        self.lastError = lastError
         self.onPing = onPing
+        self.onRetry = onRetry
     }
     
     @State private var isHovering = false
@@ -73,11 +77,14 @@ struct UsageView: View {
     
     var body: some View {
         Group {
-            if let usage = account.usageData {
+            if let error = lastError, account.usageData == nil {
+                // Error state - no data available
+                ErrorCardView(error: error, accountName: account.name, onRetry: onRetry)
+            } else if let usage = account.usageData {
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 10) {
                         VStack(alignment: .center, spacing: 6) {
-                            Text("Weekly")
+                            Text(account.type == .glm ? "Monthly" : "Weekly")
                                 .font(.system(size: 11, weight: .medium, design: .rounded))
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
@@ -96,13 +103,23 @@ struct UsageView: View {
                             .tint(weeklyColor(for: usage.weeklyPercentage))
                             .frame(width: 28, height: 28)
                             
-                            Text(usage.weeklyReset)
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
-                                .padding(.top, 8)
+                            if account.type == .glm, let used = usage.glmMonthlyUsed, let limit = usage.glmMonthlyLimit {
+                                Text(String(format: "%.0f/%.0f", used, limit))
+                                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                                    .foregroundColor(.primary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                    .padding(.top, 8)
+                            } else {
+                                Text(usage.weeklyReset)
+                                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                                    .padding(.top, 8)
+                            }
                         }
                         .frame(width: 64, alignment: .center)
                         .padding(.top, 0)
@@ -137,53 +154,62 @@ struct UsageView: View {
                                     .layoutPriority(2)
                             }
                             
-                            HStack(spacing: 6) {
-                                Text(account.type == .cursor ? "Request Usage" : "Session Usage")
-                                    .font(.system(.caption, design: .rounded).weight(.semibold))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                                    .truncationMode(.tail)
-                                    .layoutPriority(1)
-                                
-                                Spacer()
-                                
-                                if account.type == .claude && usage.sessionReset == "Ready" {
-                                    Button(action: { onPing?() }) {
-                                        Image(systemName: "play.circle.fill")
-                                            .font(.system(size: 14))
-                                            .foregroundColor(.green)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                                
-                                Text(percentageText(for: usage.sessionPercentage))
-                                    .font(.system(.caption, design: .rounded).weight(.semibold))
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            HStack(spacing: 6) {
-                                Text(usage.sessionResetDisplay == "Ready" ? "Ready to start new session" : "Resets in: \(usage.sessionResetDisplay)")
-                                    .font(.system(.caption, design: .rounded))
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                                if isFetching {
-                                    ProgressView()
-                                        .progressViewStyle(.circular)
-                                        .controlSize(.mini)
-                                } else {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .font(.system(size: 12))
-                                        .foregroundColor(.green)
-                                }
-                            }
-                            
-                            Gauge(value: usage.sessionPercentage) {
-                                EmptyView()
-                            }
-                            .gaugeStyle(.accessoryLinear)
-                            .tint(sessionGradient(for: usage.sessionPercentage))
-                            .controlSize(.small)
-                            .scaleEffect(y: 1.35)
+                             HStack(spacing: 6) {
+                                 if account.type == .glm {
+                                     Text("5 Hours Quota")
+                                         .font(.system(.caption, design: .rounded).weight(.semibold))
+                                         .foregroundColor(.secondary)
+                                         .lineLimit(1)
+                                         .truncationMode(.tail)
+                                         .layoutPriority(1)
+                                 } else {
+                                     Text(account.type == .cursor ? "Request Usage" : "Session Usage")
+                                         .font(.system(.caption, design: .rounded).weight(.semibold))
+                                         .foregroundColor(.secondary)
+                                         .lineLimit(1)
+                                         .truncationMode(.tail)
+                                         .layoutPriority(1)
+                                 }
+
+                                 Spacer()
+
+                                 if account.type == .claude && usage.sessionReset == "Ready" {
+                                     Button(action: { onPing?() }) {
+                                         Image(systemName: "play.circle.fill")
+                                             .font(.system(size: 14))
+                                             .foregroundColor(.green)
+                                     }
+                                     .buttonStyle(.plain)
+                                 }
+
+                                 Text(percentageText(for: usage.sessionPercentage))
+                                     .font(.system(.caption, design: .rounded).weight(.semibold))
+                                     .foregroundColor(.secondary)
+                             }
+
+                             HStack(spacing: 6) {
+                                 Text(usage.sessionResetDisplay == "Ready" ? "Ready to start new session" : usage.sessionResetDisplay)
+                                     .font(.system(.caption, design: .rounded))
+                                     .foregroundColor(.secondary)
+                                 Spacer()
+                                 if isFetching {
+                                     ProgressView()
+                                         .progressViewStyle(.circular)
+                                         .controlSize(.mini)
+                                 } else {
+                                     Image(systemName: "checkmark.circle.fill")
+                                         .font(.system(size: 12))
+                                         .foregroundColor(.green)
+                                 }
+                             }
+
+                             Gauge(value: usage.sessionPercentage) {
+                                 EmptyView()
+                             }
+                             .gaugeStyle(.accessoryLinear)
+                             .tint(sessionGradient(for: usage.sessionPercentage))
+                             .controlSize(.small)
+                             .scaleEffect(y: 1.35)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -205,49 +231,49 @@ struct UsageView: View {
 
 struct LoadingCardView: View {
     @State private var isAnimating = false
-    
+
     var body: some View {
         HStack(spacing: 20) {
             VStack(alignment: .center, spacing: 6) {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.primary.opacity(0.1))
                     .frame(width: 36, height: 10)
-                
+
                 Circle()
                     .fill(Color.primary.opacity(0.1))
                     .frame(width: 42, height: 42)
-                
+
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.primary.opacity(0.1))
                     .frame(width: 48, height: 10)
             }
             .fixedSize(horizontal: true, vertical: false)
-            
+
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 8) {
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.primary.opacity(0.1))
                         .frame(width: 140, height: 16)
-                    
+
                     Spacer()
-                    
+
                     Circle()
                         .fill(Color.primary.opacity(0.1))
                         .frame(width: 12, height: 12)
-                    
+
                     RoundedRectangle(cornerRadius: 6)
                         .fill(Color.primary.opacity(0.1))
                         .frame(width: 48, height: 14)
                 }
-                
+
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.primary.opacity(0.1))
                     .frame(width: 180, height: 12)
-                
+
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.primary.opacity(0.1))
                     .frame(width: 120, height: 10)
-                
+
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.primary.opacity(0.1))
                     .frame(height: 6)
@@ -257,6 +283,59 @@ struct LoadingCardView: View {
         .onAppear {
             withAnimation(.easeInOut(duration: 1.0).repeatForever(autoreverses: true)) {
                 isAnimating = true
+            }
+        }
+    }
+}
+
+struct ErrorCardView: View {
+    let error: Error
+    let accountName: String
+    var onRetry: (() -> Void)?
+
+    @State private var isHovering = false
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 28))
+                .foregroundColor(.orange)
+                .frame(width: 44, height: 44)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(accountName)
+                    .font(.system(.headline, design: .rounded).weight(.semibold))
+                    .lineLimit(1)
+
+                Text("Failed to fetch usage data")
+                    .font(.system(.subheadline, design: .rounded))
+                    .foregroundColor(.secondary)
+
+                Text(error.localizedDescription)
+                    .font(.system(.caption, design: .rounded))
+                    .foregroundColor(.red.opacity(0.8))
+                    .lineLimit(2)
+            }
+
+            Spacer()
+
+            if let onRetry = onRetry {
+                Button(action: onRetry) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("Retry")
+                    }
+                    .font(.system(.caption, design: .rounded).weight(.semibold))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(isHovering ? Color.blue : Color.blue.opacity(0.8))
+                    .foregroundColor(.white)
+                    .cornerRadius(6)
+                }
+                .buttonStyle(.plain)
+                .onHover { hovering in
+                    isHovering = hovering
+                }
             }
         }
     }

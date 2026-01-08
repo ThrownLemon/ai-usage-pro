@@ -3,7 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("refreshInterval") private var refreshInterval: Double = 300 // Default 5 mins
     @AppStorage("autoWakeUp") private var autoWakeUp: Bool = false
-    @EnvironmentObject var appState: AppState
+    @AppStorage(Log.debugModeKey) private var debugModeEnabled: Bool = false
+    @Environment(AppState.self) var appState
 
     // Notification settings using @AppStorage for reactive updates
     @AppStorage(NotificationSettings.enabledKey) private var notificationsEnabled: Bool = NotificationSettings.defaultEnabled
@@ -35,7 +36,7 @@ struct SettingsView: View {
                         Text("5 Minutes").tag(300.0)
                     }
                     .pickerStyle(.menu)
-                    .onChange(of: refreshInterval) { _ in
+                    .onChange(of: refreshInterval) {
                         appState.rescheduleAllSessions()
                     }
                     
@@ -113,18 +114,8 @@ struct SettingsView: View {
 
                 // Accounts Section
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Accounts (\(appState.sessions.count))")
-                            .font(.headline)
-                        Spacer()
-                        Button(action: {
-                            appState.addCursorAccount()
-                        }) {
-                            Label("Add Cursor", systemImage: "plus.circle")
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    }
+                    Text("Accounts (\(appState.sessions.count))")
+                        .font(.headline)
                     
                     ForEach(appState.sessions) { session in
                         HStack {
@@ -157,11 +148,39 @@ struct SettingsView: View {
                 .padding()
                 .background(Material.regular)
                 .cornerRadius(8)
+
+                // Developer Section
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Developer")
+                        .font(.headline)
+
+                    Toggle("Debug Logging", isOn: $debugModeEnabled)
+
+                    Text("Logs to Console.app. Filter by subsystem: com.claudeusagepro")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    if debugModeEnabled {
+                        HStack(spacing: 8) {
+                            Text("View logs:")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Button("Open Console") {
+                                NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/Utilities/Console.app"))
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        }
+                    }
+                }
+                .padding()
+                .background(Material.regular)
+                .cornerRadius(8)
             }
             .padding(20)
         }
         .onAppear {
-            print("[DEBUG] SettingsView appeared")
+            Log.debug(Log.Category.settings, "SettingsView appeared")
         }
     }
 }

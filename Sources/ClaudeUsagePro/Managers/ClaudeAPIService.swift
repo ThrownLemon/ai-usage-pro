@@ -116,6 +116,7 @@ class ClaudeAPIService {
             sessionResetDisplay: sessionReset,
             weeklyPercentage: weeklyPct,
             weeklyReset: weeklyReset,
+            weeklyResetDisplay: weeklyReset,
             tier: "Unknown",
             email: nil,
             fullName: nil,

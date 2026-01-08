@@ -125,7 +125,10 @@ struct UsagePrediction {
 
 ### Storage
 
-SQLite via SwiftData or simple JSON file in Application Support
+**Recommended:** JSON file in Application Support for simplicity.
+- JSON is sufficient for ~720 records per account (30 days × 24 hours)
+- SQLite/SwiftData only if adding complex queries or relationships later
+- File location: `~/Library/Application Support/ClaudeUsagePro/usage_history.json`
 
 ---
 

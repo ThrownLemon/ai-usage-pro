@@ -43,12 +43,14 @@ enum Constants {
 
     // MARK: - Usage Thresholds
 
+    /// Default threshold values for gauge color transitions.
+    /// User-configurable thresholds are stored in NotificationSettings.
     enum UsageThresholds {
-        /// Low usage threshold
+        /// Low usage threshold (gauge transitions from green to yellow)
         static let low: Double = 0.50
-        /// Medium usage threshold
+        /// Medium usage threshold (default for user-configurable lower alert)
         static let medium: Double = 0.75
-        /// High usage threshold
+        /// High usage threshold (default for user-configurable higher alert)
         static let high: Double = 0.90
     }
 

@@ -167,12 +167,16 @@ enum Log {
         let sessionPct = Int(usageData.sessionPercentage * 100)
         let weeklyPct = Int(usageData.weeklyPercentage * 100)
 
-        // Build the formatted output
+        // Build the formatted output with fixed-width box (64 inner chars)
+        let boxWidth = 64
+        let headerContent = " \(icon) \(providerName) │ \(accountName)"
+        let paddedHeader = headerContent.padding(toLength: boxWidth, withPad: " ", startingAt: 0)
+
         var output = """
 
-        ╔══════════════════════════════════════════════════════════════╗
-        ║ \(icon) \(providerName) │ \(accountName)
-        ╠══════════════════════════════════════════════════════════════╣
+        ╔════════════════════════════════════════════════════════════════╗
+        ║\(paddedHeader)║
+        ╠════════════════════════════════════════════════════════════════╣
         """
 
         switch accountType {
@@ -215,7 +219,7 @@ enum Log {
 
         output += """
 
-        ╚══════════════════════════════════════════════════════════════╝
+        ╚════════════════════════════════════════════════════════════════╝
         """
 
         log.info("\(output, privacy: .private)")

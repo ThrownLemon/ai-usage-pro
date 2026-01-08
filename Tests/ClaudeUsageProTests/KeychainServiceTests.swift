@@ -3,10 +3,12 @@ import XCTest
 
 final class KeychainServiceTests: XCTestCase {
     private let testKey = "test_keychain_key_\(UUID().uuidString)"
+    private let nonexistentKey = "nonexistent_key_\(UUID().uuidString)"
 
     override func tearDownWithError() throws {
         // Clean up after each test
         try? KeychainService.delete(forKey: testKey)
+        try? KeychainService.delete(forKey: nonexistentKey)
     }
 
     func testSaveAndLoadData() throws {
@@ -35,7 +37,7 @@ final class KeychainServiceTests: XCTestCase {
 
     func testLoadNonexistentKey() throws {
         // When
-        let result = try KeychainService.load(forKey: "nonexistent_key_12345")
+        let result = try KeychainService.load(forKey: nonexistentKey)
 
         // Then
         XCTAssertNil(result)

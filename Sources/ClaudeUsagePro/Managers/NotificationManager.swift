@@ -3,6 +3,7 @@ import UserNotifications
 import Combine
 import os
 
+@MainActor
 class NotificationManager: NSObject, ObservableObject {
     static let shared = NotificationManager()
     private let category = Log.Category.notifications
@@ -254,7 +255,7 @@ class NotificationManager: NSObject, ObservableObject {
 // MARK: - UNUserNotificationCenterDelegate
 extension NotificationManager: UNUserNotificationCenterDelegate {
     // Handle notification when app is in foreground
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
@@ -264,7 +265,7 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
     }
 
     // Handle notification interaction (user tapped on it)
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void

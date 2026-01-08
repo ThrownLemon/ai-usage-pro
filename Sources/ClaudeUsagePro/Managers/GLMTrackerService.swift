@@ -1,11 +1,17 @@
 import Foundation
 import os
 
+/// Errors that can occur when tracking GLM Coding Plan usage.
 enum GLMTrackerError: Error, LocalizedError {
+    /// API token not provided
     case tokenNotFound
+    /// Network request failed
     case fetchFailed(Error)
+    /// Server returned non-200 status code
     case badResponse(statusCode: Int)
+    /// Failed to parse JSON response
     case invalidJSONResponse(Error)
+    /// API URL is malformed
     case invalidAPIURL
 
     var errorDescription: String? {
@@ -51,12 +57,19 @@ private struct GLMUsageDetail: Codable {
 }
 
 
+/// Usage information for a GLM Coding Plan account.
 struct GLMUsageInfo {
-    let sessionPercentage: Double    // 5-hour token limit
-    let monthlyPercentage: Double    // 1-month MCP limit
+    /// Usage percentage for the 5-hour rolling window
+    let sessionPercentage: Double
+    /// Usage percentage for the monthly limit
+    let monthlyPercentage: Double
+    /// Tokens used in current 5-hour window
     let sessionUsed: Double
+    /// Token limit for 5-hour window
     let sessionLimit: Double
+    /// Tokens used this month
     let monthlyUsed: Double
+    /// Monthly token limit
     let monthlyLimit: Double
 
     /// Format session reset display based on remaining time in the 5-hour rolling window
@@ -84,6 +97,7 @@ struct GLMUsageInfo {
     }
 }
 
+/// Service for fetching GLM Coding Plan usage statistics from the Zhipu AI API.
 class GLMTrackerService {
     private let category = Log.Category.glmTracker
     private let baseURL: String

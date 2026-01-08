@@ -2,13 +2,19 @@ import Foundation
 import SwiftUI
 import os
 
+/// Manages a single account's usage monitoring session.
+/// Handles periodic fetching, threshold notifications, and auto-wake functionality.
 @Observable
 @MainActor
 class AccountSession: Identifiable {
     private let category = Log.Category.session
+    /// Unique identifier matching the associated account's ID
     let id: UUID
+    /// The account being monitored
     var account: ClaudeAccount
+    /// Whether a fetch operation is currently in progress
     var isFetching: Bool = false
+    /// The most recent error encountered during fetching, if any
     var lastError: Error?
 
     private var previousSessionPercentage: Double?
@@ -24,6 +30,8 @@ class AccountSession: Identifiable {
     private nonisolated(unsafe) var fetchTask: Task<Void, Never>?
     var onRefreshTick: (() -> Void)?
 
+    /// Creates a new session for monitoring an account's usage.
+    /// - Parameter account: The account to monitor
     init(account: ClaudeAccount) {
         self.id = account.id
         self.account = account
@@ -45,12 +53,16 @@ class AccountSession: Identifiable {
         timer?.invalidate()
     }
     
+    /// Starts monitoring the account's usage with periodic refreshes.
+    /// Performs an immediate fetch and schedules recurring updates.
     func startMonitoring() {
         Log.debug(category, "Starting monitoring for \(account.name)")
         fetchNow()
         scheduleRefreshTimer()
     }
 
+    /// Stops monitoring and cancels all pending operations.
+    /// Safe to call multiple times.
     func stopMonitoring() {
         Log.debug(category, "Stopping monitoring for \(account.name)")
         fetchTask?.cancel()
@@ -58,7 +70,8 @@ class AccountSession: Identifiable {
         timer?.invalidate()
         timer = nil
     }
-    
+
+    /// Schedules or reschedules the refresh timer based on user settings.
     func scheduleRefreshTimer() {
         timer?.invalidate()
         let interval = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.refreshInterval)
@@ -72,6 +85,8 @@ class AccountSession: Identifiable {
         }
     }
     
+    /// Sends a ping to wake up a ready session.
+    /// - Parameter isAuto: Whether this is an automatic ping (respects auto-wake setting)
     func ping(isAuto: Bool = false) {
         if isAuto && !UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.autoWakeUp) {
             Log.debug(category, "Auto-ping cancelled (setting disabled)")
@@ -100,6 +115,8 @@ class AccountSession: Identifiable {
         tracker?.pingSession()
     }
     
+    /// Immediately fetches usage data for the account.
+    /// Cancels any in-progress fetch and starts a new one.
     func fetchNow() {
         guard !isFetching else { return }
         isFetching = true

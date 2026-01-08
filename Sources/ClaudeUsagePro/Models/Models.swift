@@ -1,12 +1,17 @@
 import Foundation
 import WebKit
 
+/// Types of accounts supported by the application.
 enum AccountType: String, Codable {
+    /// Claude.ai account
     case claude
+    /// Cursor IDE account
     case cursor
+    /// GLM Coding Plan account
     case glm
 }
 
+/// Usage statistics for an account, normalized across different provider types.
 struct UsageData: Hashable, Codable {
     var sessionPercentage: Double
     var sessionReset: String
@@ -31,15 +36,23 @@ struct UsageData: Hashable, Codable {
     var glmMonthlyLimit: Double?
 }
 
+/// Represents a user account with credentials and usage data.
+/// Credentials are stored in Keychain, not UserDefaults.
 struct ClaudeAccount: Identifiable, Hashable, Codable {
+    /// Unique identifier for this account
     var id = UUID()
+    /// Display name for the account
     var name: String
+    /// Type of account (claude, cursor, or glm)
     var type: AccountType = .claude
+    /// Current usage statistics, if fetched
     var usageData: UsageData?
 
     // Sensitive data - stored in Keychain, not UserDefaults
     // These are transient properties that load from Keychain on-demand
+    /// Cookie properties for Claude accounts (loaded from Keychain)
     var cookieProps: [[String: String]] = []
+    /// API token for GLM accounts (loaded from Keychain)
     var apiToken: String?
 
     // CodingKeys excludes sensitive data (cookieProps, apiToken)
@@ -113,10 +126,12 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         }
     }
     
+    /// Display string for the account's tier/plan
     var limitDetails: String {
         return usageData?.tier ?? "Fetching..."
     }
-    
+
+    /// Converts stored cookie properties back to HTTPCookie objects
     var cookies: [HTTPCookie] {
         return cookieProps.compactMap { props in
             // Convert String keys back to HTTPCookiePropertyKey
@@ -134,12 +149,24 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         }
     }
     
+    /// Creates a new Claude or Cursor account with cookies.
+    /// - Parameters:
+    ///   - name: Display name for the account
+    ///   - cookies: Authentication cookies
+    ///   - type: Account type (defaults to .claude)
     init(name: String, cookies: [HTTPCookie], type: AccountType = .claude) {
         self.name = name
         self.type = type
         self.cookieProps = cookies.compactMap { $0.toCodable() }
     }
-    
+
+    /// Creates an account with a specific ID, cookies, and optional usage data.
+    /// - Parameters:
+    ///   - id: Unique identifier
+    ///   - name: Display name
+    ///   - cookies: Authentication cookies
+    ///   - usageData: Pre-existing usage data
+    ///   - type: Account type (defaults to .claude)
     init(id: UUID, name: String, cookies: [HTTPCookie], usageData: UsageData?, type: AccountType = .claude) {
         self.id = id
         self.name = name
@@ -148,7 +175,10 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         self.usageData = usageData
     }
 
-    // GLM-specific initializer with API token
+    /// Creates a new GLM account with an API token.
+    /// - Parameters:
+    ///   - name: Display name for the account
+    ///   - apiToken: GLM API token
     init(name: String, apiToken: String) {
         self.name = name
         self.type = .glm
@@ -156,6 +186,12 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         self.cookieProps = []
     }
 
+    /// Creates a GLM account with a specific ID, token, and optional usage data.
+    /// - Parameters:
+    ///   - id: Unique identifier
+    ///   - name: Display name
+    ///   - apiToken: GLM API token
+    ///   - usageData: Pre-existing usage data
     init(id: UUID, name: String, apiToken: String, usageData: UsageData?) {
         self.id = id
         self.name = name

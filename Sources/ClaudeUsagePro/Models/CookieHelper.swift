@@ -1,10 +1,14 @@
 import Foundation
 
+/// Wrapper for cookie properties that can be encoded/decoded.
 struct CookieProperties: Codable {
+    /// Cookie properties as raw string key-value pairs
     let properties: [HTTPCookiePropertyKey.RawValue: String]
 }
 
 extension HTTPCookie {
+    /// Converts this cookie to a Codable dictionary representation.
+    /// - Returns: Dictionary of string properties, or nil if conversion fails
     func toCodable() -> [String: String]? {
         guard let props = self.properties else { return nil }
         // Convert [HTTPCookiePropertyKey: Any] to [String: String]

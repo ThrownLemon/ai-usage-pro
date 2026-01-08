@@ -89,26 +89,13 @@ final class GLMTrackerAdapter: UsageTracker, @unchecked Sendable {
     func fetchUsage() async throws -> UsageData {
         let info = try await service.fetchGLMUsage(apiToken: apiToken)
 
-        // Calculate session reset display (5-hour rolling window)
-        let sessionRemainingHours = (1.0 - info.sessionPercentage) * Constants.GLM.sessionWindowHours
-        let hours = Int(sessionRemainingHours)
-        let minutes = Int((sessionRemainingHours - Double(hours)) * 60)
-
-        let sessionResetDisplay: String
-        if hours > 0 && minutes > 0 {
-            sessionResetDisplay = String(format: "Resets in %dh %dm", hours, minutes)
-        } else if hours > 0 {
-            sessionResetDisplay = String(format: "Resets in %dh", hours)
-        } else if minutes > 0 {
-            sessionResetDisplay = String(format: "Resets in %dm", minutes)
-        } else {
-            sessionResetDisplay = "Resets in <1m"
-        }
-
-        // Weekly display shows usage/limit for GLM
-        let weeklyResetDisplay = info.monthlyLimit > 0
-            ? String(format: "%.0f / %.0f", info.monthlyUsed, info.monthlyLimit)
-            : String(format: "%.1f%%", info.monthlyPercentage * 100)
+        // Use shared helper methods for consistent formatting
+        let sessionResetDisplay = GLMUsageInfo.formatSessionResetDisplay(sessionPercentage: info.sessionPercentage)
+        let weeklyResetDisplay = GLMUsageInfo.formatMonthlyResetDisplay(
+            monthlyUsed: info.monthlyUsed,
+            monthlyLimit: info.monthlyLimit,
+            monthlyPercentage: info.monthlyPercentage
+        )
 
         return UsageData(
             sessionPercentage: info.sessionPercentage,
@@ -132,12 +119,22 @@ final class GLMTrackerAdapter: UsageTracker, @unchecked Sendable {
 
 // MARK: - Adapter for TrackerService (Claude)
 
+/// Error thrown when a fetch is cancelled due to a new concurrent call
+enum TrackerAdapterError: Error {
+    case fetchCancelled
+}
+
 /// Adapter that wraps TrackerService to conform to UsageTracker protocol.
 /// This adapter bridges the callback-based TrackerService to async/await.
+/// Handles concurrent calls by cancelling previous pending operations.
 @MainActor
 final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Sendable {
     private let service: TrackerService
     private let cookies: [HTTPCookie]
+
+    // Track pending continuations to prevent leaks on concurrent calls
+    private var pendingFetchContinuation: CheckedContinuation<UsageData, Error>?
+    private var pendingPingContinuation: CheckedContinuation<Bool, Error>?
 
     init(cookies: [HTTPCookie]) {
         self.cookies = cookies
@@ -146,14 +143,33 @@ final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Send
 
     nonisolated func fetchUsage() async throws -> UsageData {
         try await withCheckedThrowingContinuation { continuation in
-            Task { @MainActor in
-                self.service.onUpdate = { usageData in
-                    var data = usageData
-                    data.sessionResetDisplay = usageData.sessionReset
-                    continuation.resume(returning: data)
+            Task { @MainActor [weak self] in
+                guard let self = self else {
+                    continuation.resume(throwing: TrackerAdapterError.fetchCancelled)
+                    return
                 }
-                self.service.onError = { error in
-                    continuation.resume(throwing: error)
+
+                // Cancel any pending fetch continuation before starting new one
+                if let pending = self.pendingFetchContinuation {
+                    pending.resume(throwing: TrackerAdapterError.fetchCancelled)
+                }
+                self.pendingFetchContinuation = continuation
+
+                self.service.onUpdate = { [weak self] usageData in
+                    guard let self = self else { return }
+                    if let pending = self.pendingFetchContinuation {
+                        var data = usageData
+                        data.sessionResetDisplay = usageData.sessionReset
+                        pending.resume(returning: data)
+                        self.pendingFetchContinuation = nil
+                    }
+                }
+                self.service.onError = { [weak self] error in
+                    guard let self = self else { return }
+                    if let pending = self.pendingFetchContinuation {
+                        pending.resume(throwing: error)
+                        self.pendingFetchContinuation = nil
+                    }
                 }
                 self.service.fetchUsage(cookies: self.cookies)
             }
@@ -162,9 +178,24 @@ final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Send
 
     nonisolated func pingSession() async throws -> Bool {
         try await withCheckedThrowingContinuation { continuation in
-            Task { @MainActor in
-                self.service.onPingComplete = { success in
-                    continuation.resume(returning: success)
+            Task { @MainActor [weak self] in
+                guard let self = self else {
+                    continuation.resume(throwing: TrackerAdapterError.fetchCancelled)
+                    return
+                }
+
+                // Cancel any pending ping continuation before starting new one
+                if let pending = self.pendingPingContinuation {
+                    pending.resume(throwing: TrackerAdapterError.fetchCancelled)
+                }
+                self.pendingPingContinuation = continuation
+
+                self.service.onPingComplete = { [weak self] success in
+                    guard let self = self else { return }
+                    if let pending = self.pendingPingContinuation {
+                        pending.resume(returning: success)
+                        self.pendingPingContinuation = nil
+                    }
                 }
                 self.service.pingSession()
             }

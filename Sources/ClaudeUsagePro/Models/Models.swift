@@ -71,7 +71,10 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     // MARK: - Keychain Integration
 
     /// Save sensitive credentials to Keychain
-    func saveCredentialsToKeychain() {
+    /// - Returns: true if all credentials were saved successfully, false on any error
+    @discardableResult
+    func saveCredentialsToKeychain() -> Bool {
+        var success = true
         do {
             if !cookieProps.isEmpty {
                 try KeychainService.save(cookieProps, forKey: KeychainService.cookiesKey(for: id))
@@ -81,7 +84,9 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
             }
         } catch {
             Log.error(Log.Category.keychain, "Failed to save credentials: \(error)")
+            success = false
         }
+        return success
     }
 
     /// Load sensitive credentials from Keychain

@@ -175,26 +175,13 @@ class AccountSession: Identifiable {
         self.isFetching = false
         switch result {
         case .success(let info):
-            // GLM TOKENS_LIMIT: 5-hour rolling window - show detailed reset time
-            let sessionRemainingHours = (1.0 - info.sessionPercentage) * Constants.GLM.sessionWindowHours
-            let hours = Int(sessionRemainingHours)
-            let minutes = Int((sessionRemainingHours - Double(hours)) * 60)
-
-            let sessionResetDisplay: String
-            if hours > 0 && minutes > 0 {
-                sessionResetDisplay = String(format: "Resets in %dh %dm", hours, minutes)
-            } else if hours > 0 {
-                sessionResetDisplay = String(format: "Resets in %dh", hours)
-            } else if minutes > 0 {
-                sessionResetDisplay = String(format: "Resets in %dm", minutes)
-            } else {
-                sessionResetDisplay = "Resets in <1m"
-            }
-
-            // GLM TIME_LIMIT: Keep as percentage for weekly
-            let weeklyResetDisplay = info.monthlyLimit > 0
-                ? String(format: "%.0f / %.0f", info.monthlyUsed, info.monthlyLimit)
-                : String(format: "%.1f%%", info.monthlyPercentage * 100)
+            // Use shared helper methods for consistent formatting
+            let sessionResetDisplay = GLMUsageInfo.formatSessionResetDisplay(sessionPercentage: info.sessionPercentage)
+            let weeklyResetDisplay = GLMUsageInfo.formatMonthlyResetDisplay(
+                monthlyUsed: info.monthlyUsed,
+                monthlyLimit: info.monthlyLimit,
+                monthlyPercentage: info.monthlyPercentage
+            )
 
             let usageData = UsageData(
                 sessionPercentage: info.sessionPercentage,

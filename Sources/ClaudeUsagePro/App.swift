@@ -223,6 +223,7 @@ struct AddAccountView: View {
         }
     }
 
+    @MainActor
     private func validateAndSubmit() async {
         let token = glmTokenInput.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !token.isEmpty else { return }
@@ -652,7 +653,8 @@ class AppState {
                 var apiToken: String?
             }
 
-            if let legacyAccounts = try? JSONDecoder().decode([LegacyAccount].self, from: data) {
+            do {
+                let legacyAccounts = try JSONDecoder().decode([LegacyAccount].self, from: data)
                 for legacy in legacyAccounts {
                     // Migrate cookies if present
                     if let cookies = legacy.cookieProps, !cookies.isEmpty {
@@ -674,6 +676,8 @@ class AppState {
                         }
                     }
                 }
+            } catch {
+                Log.error(Log.Category.keychain, "Failed to decode legacy accounts: \(error)")
             }
         }
 

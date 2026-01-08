@@ -170,7 +170,11 @@ enum Log {
         // Build the formatted output with fixed-width box (64 inner chars)
         let boxWidth = 64
         let headerContent = " \(icon) \(providerName) │ \(accountName)"
-        let paddedHeader = headerContent.padding(toLength: boxWidth, withPad: " ", startingAt: 0)
+        // Truncate if too long, then pad to fixed width
+        let truncatedHeader = headerContent.count > boxWidth
+            ? String(headerContent.prefix(boxWidth - 1)) + "…"
+            : headerContent
+        let paddedHeader = truncatedHeader.padding(toLength: boxWidth, withPad: " ", startingAt: 0)
 
         var output = """
 

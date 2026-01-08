@@ -58,6 +58,30 @@ struct GLMUsageInfo {
     let sessionLimit: Double
     let monthlyUsed: Double
     let monthlyLimit: Double
+
+    /// Format session reset display based on remaining time in the 5-hour rolling window
+    static func formatSessionResetDisplay(sessionPercentage: Double) -> String {
+        let sessionRemainingHours = (1.0 - sessionPercentage) * Constants.GLM.sessionWindowHours
+        let hours = Int(sessionRemainingHours)
+        let minutes = Int((sessionRemainingHours - Double(hours)) * 60)
+
+        if hours > 0 && minutes > 0 {
+            return String(format: "Resets in %dh %dm", hours, minutes)
+        } else if hours > 0 {
+            return String(format: "Resets in %dh", hours)
+        } else if minutes > 0 {
+            return String(format: "Resets in %dm", minutes)
+        } else {
+            return "Resets in <1m"
+        }
+    }
+
+    /// Format weekly/monthly reset display showing usage vs limit
+    static func formatMonthlyResetDisplay(monthlyUsed: Double, monthlyLimit: Double, monthlyPercentage: Double) -> String {
+        return monthlyLimit > 0
+            ? String(format: "%.0f / %.0f", monthlyUsed, monthlyLimit)
+            : String(format: "%.1f%%", monthlyPercentage * 100)
+    }
 }
 
 class GLMTrackerService {
@@ -67,47 +91,42 @@ class GLMTrackerService {
     private let toolUsageURL: String
     private let quotaLimitURL: String
 
+    /// Build endpoint URLs for a given base domain
+    private static func buildEndpoints(fromDomain domain: String) -> (base: String, model: String, tool: String, quota: String) {
+        return (
+            base: "\(domain)/api/monitor/usage",
+            model: "\(domain)/api/monitor/usage/model-usage",
+            tool: "\(domain)/api/monitor/usage/tool-usage",
+            quota: "\(domain)/api/monitor/usage/quota/limit"
+        )
+    }
+
+    /// Extract base domain from URL string, returns nil if parsing fails
+    private static func extractBaseDomain(from urlString: String) -> String? {
+        guard let url = URL(string: urlString),
+              let host = url.host else { return nil }
+        return "\(url.scheme ?? "https")://\(host)"
+    }
+
     init() {
         // Determine platform based on ANTHROPIC_BASE_URL environment variable (like the plugin)
         let anthropicBaseURL = ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"] ?? ""
+        let defaultDomain = "https://open.bigmodel.cn"
 
+        let domain: String
         if anthropicBaseURL.contains("api.z.ai") {
-            // ZAI platform
-            if let url = URL(string: anthropicBaseURL),
-               let baseDomain = URL(string: "\(url.scheme ?? "https")://\(url.host ?? "")") {
-                let domain = baseDomain.absoluteString
-                baseURL = "\(domain)/api/monitor/usage"
-                modelUsageURL = "\(domain)/api/monitor/usage/model-usage"
-                toolUsageURL = "\(domain)/api/monitor/usage/tool-usage"
-                quotaLimitURL = "\(domain)/api/monitor/usage/quota/limit"
-            } else {
-                baseURL = "https://api.z.ai/api/monitor/usage"
-                modelUsageURL = "https://api.z.ai/api/monitor/usage/model-usage"
-                toolUsageURL = "https://api.z.ai/api/monitor/usage/tool-usage"
-                quotaLimitURL = "https://api.z.ai/api/monitor/usage/quota/limit"
-            }
+            domain = Self.extractBaseDomain(from: anthropicBaseURL) ?? "https://api.z.ai"
         } else if anthropicBaseURL.contains("open.bigmodel.cn") || anthropicBaseURL.contains("dev.bigmodel.cn") {
-            // ZHIPU platform
-            if let url = URL(string: anthropicBaseURL),
-               let baseDomain = URL(string: "\(url.scheme ?? "https")://\(url.host ?? "")") {
-                let domain = baseDomain.absoluteString
-                baseURL = "\(domain)/api/monitor/usage"
-                modelUsageURL = "\(domain)/api/monitor/usage/model-usage"
-                toolUsageURL = "\(domain)/api/monitor/usage/tool-usage"
-                quotaLimitURL = "\(domain)/api/monitor/usage/quota/limit"
-            } else {
-                baseURL = "https://open.bigmodel.cn/api/monitor/usage"
-                modelUsageURL = "https://open.bigmodel.cn/api/monitor/usage/model-usage"
-                toolUsageURL = "https://open.bigmodel.cn/api/monitor/usage/tool-usage"
-                quotaLimitURL = "https://open.bigmodel.cn/api/monitor/usage/quota/limit"
-            }
+            domain = Self.extractBaseDomain(from: anthropicBaseURL) ?? defaultDomain
         } else {
-            // Default to ZHIPU if no environment variable or unrecognized URL
-            baseURL = "https://open.bigmodel.cn/api/monitor/usage"
-            modelUsageURL = "https://open.bigmodel.cn/api/monitor/usage/model-usage"
-            toolUsageURL = "https://open.bigmodel.cn/api/monitor/usage/tool-usage"
-            quotaLimitURL = "https://open.bigmodel.cn/api/monitor/usage/quota/limit"
+            domain = defaultDomain
         }
+
+        let endpoints = Self.buildEndpoints(fromDomain: domain)
+        baseURL = endpoints.base
+        modelUsageURL = endpoints.model
+        toolUsageURL = endpoints.tool
+        quotaLimitURL = endpoints.quota
     }
 
     func fetchGLMUsage(apiToken: String) async throws -> GLMUsageInfo {

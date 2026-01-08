@@ -135,9 +135,7 @@ struct SettingsView: View {
                             }
                             Spacer()
                             Button("Remove", role: .destructive) {
-                                if let index = appState.sessions.firstIndex(where: { $0.id == session.id }) {
-                                    appState.sessions.remove(at: index)
-                                }
+                                appState.removeAccount(id: session.account.id)
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)

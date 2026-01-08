@@ -156,7 +156,7 @@ struct UsageView: View {
                             
                              HStack(spacing: 6) {
                                  if account.type == .glm {
-                                     Text("5 Hours Quota")
+                                     Text(Constants.GLM.sessionWindowLabel)
                                          .font(.system(.caption, design: .rounded).weight(.semibold))
                                          .foregroundColor(.secondary)
                                          .lineLimit(1)

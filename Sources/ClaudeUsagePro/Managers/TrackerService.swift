@@ -24,10 +24,15 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
     private func cleanup() {
         pingTimeoutWorkItem?.cancel()
         pingTimeoutWorkItem = nil
+        cleanupExistingWebView()
+        webView = nil
+    }
+
+    /// Tear down the current webView (stopLoading, clear delegate, remove scripts)
+    private func cleanupExistingWebView() {
         webView?.stopLoading()
         webView?.navigationDelegate = nil
         webView?.configuration.userContentController.removeAllUserScripts()
-        webView = nil
     }
     
     // Ping session by loading page with cookies and sending a message
@@ -66,11 +71,7 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
             Log.debug(self.category, "Cookies injected for ping, loading page...")
 
             // Clean up existing webView before creating a new one
-            if self.webView != nil {
-                self.webView?.stopLoading()
-                self.webView?.navigationDelegate = nil
-                self.webView?.configuration.userContentController.removeAllUserScripts()
-            }
+            self.cleanupExistingWebView()
 
             let webView = WKWebView(frame: .zero, configuration: config)
             webView.navigationDelegate = self
@@ -285,11 +286,7 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
     
     private func startHiddenBrowser(config: WKWebViewConfiguration) {
         // Clean up existing webView before creating a new one
-        if self.webView != nil {
-            self.webView?.stopLoading()
-            self.webView?.navigationDelegate = nil
-            self.webView?.configuration.userContentController.removeAllUserScripts()
-        }
+        cleanupExistingWebView()
 
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self

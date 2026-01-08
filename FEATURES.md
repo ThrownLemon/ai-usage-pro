@@ -55,7 +55,7 @@ This document tracks planned features for future implementation.
 - Define semantic colors (success, warning, critical, danger) with accessible variants
 - Replace hardcoded colors in `UsageView.swift` gauge gradients
 - Support both light and dark mode with proper contrast
-- Colorblind-friendly: avoid red/green only distinctions, use shapes/patterns as secondary indicators
+- Colorblind-friendly: avoid red/green-only distinctions, use shapes/patterns as secondary indicators
 
 ### Color Palette (WCAG AA Compliant)
 

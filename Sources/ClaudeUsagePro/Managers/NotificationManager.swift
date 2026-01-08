@@ -22,7 +22,7 @@ class NotificationManager: NSObject, ObservableObject {
     // Track last notification time per account per type to prevent spam
     // Key format: "accountName:notificationType.identifier"
     private var lastNotificationTimes: [String: Date] = [:]
-    private let cooldownInterval: TimeInterval = 5 * 60 // 5 minutes
+    private let cooldownInterval: TimeInterval = Constants.Notifications.cooldownInterval
 
     override init() {
         super.init()

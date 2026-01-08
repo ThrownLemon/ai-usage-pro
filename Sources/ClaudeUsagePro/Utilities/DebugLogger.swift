@@ -67,6 +67,20 @@ enum Log {
         static let settings = "Settings"
         static let api = "ClaudeAPI"
         static let keychain = "Keychain"
+        static let usageStats = "UsageStats"
+    }
+
+    // MARK: - Privacy Helpers
+
+    /// Mask an email address for privacy (e.g., "user@example.com" -> "u***@example.com")
+    private static func maskEmail(_ email: String) -> String {
+        guard let atIndex = email.firstIndex(of: "@") else { return "***" }
+        let localPart = email[..<atIndex]
+        let domain = email[atIndex...]
+        if localPart.count <= 1 {
+            return "*\(domain)"
+        }
+        return "\(localPart.first!)***\(domain)"
     }
 
     // MARK: - Logging Methods
@@ -74,42 +88,42 @@ enum Log {
     /// Log debug message (only when debug mode is enabled)
     /// - Parameters:
     ///   - category: Source category (e.g., "TrackerService")
-    ///   - message: Message to log
+    ///   - message: Message to log (redacted in release builds to protect sensitive data)
     static func debug(_ category: String, _ message: String) {
         guard isDebugEnabled else { return }
-        logger(for: category).debug("[\(category, privacy: .public)] \(message, privacy: .public)")
+        logger(for: category).debug("[\(category, privacy: .public)] \(message, privacy: .private)")
     }
 
     /// Log informational message
     /// - Parameters:
     ///   - category: Source category
-    ///   - message: Message to log
+    ///   - message: Message to log (redacted in release builds to protect sensitive data)
     static func info(_ category: String, _ message: String) {
-        logger(for: category).info("[\(category, privacy: .public)] \(message, privacy: .public)")
+        logger(for: category).info("[\(category, privacy: .public)] \(message, privacy: .private)")
     }
 
     /// Log warning message
     /// - Parameters:
     ///   - category: Source category
-    ///   - message: Message to log
+    ///   - message: Message to log (redacted in release builds to protect sensitive data)
     static func warning(_ category: String, _ message: String) {
-        logger(for: category).warning("[\(category, privacy: .public)] ⚠️ \(message, privacy: .public)")
+        logger(for: category).warning("[\(category, privacy: .public)] ⚠️ \(message, privacy: .private)")
     }
 
     /// Log error message
     /// - Parameters:
     ///   - category: Source category
-    ///   - message: Message to log
+    ///   - message: Message to log (redacted in release builds to protect sensitive data)
     static func error(_ category: String, _ message: String) {
-        logger(for: category).error("[\(category, privacy: .public)] ❌ \(message, privacy: .public)")
+        logger(for: category).error("[\(category, privacy: .public)] ❌ \(message, privacy: .private)")
     }
 
     /// Log critical fault (use sparingly - for unrecoverable errors)
     /// - Parameters:
     ///   - category: Source category
-    ///   - message: Message to log
+    ///   - message: Message to log (redacted in release builds to protect sensitive data)
     static func fault(_ category: String, _ message: String) {
-        logger(for: category).fault("[\(category, privacy: .public)] 🔴 \(message, privacy: .public)")
+        logger(for: category).fault("[\(category, privacy: .public)] 🔴 \(message, privacy: .private)")
     }
 
     // MARK: - Convenience Methods
@@ -133,7 +147,7 @@ enum Log {
     ///   - accountType: Type of account (claude, cursor, glm)
     ///   - usageData: The usage data to format
     static func providerStats(accountName: String, accountType: AccountType, usageData: UsageData) {
-        let log = logger(for: "UsageStats")
+        let log = logger(for: Category.usageStats)
 
         let icon: String
         let providerName: String
@@ -171,7 +185,7 @@ enum Log {
             ║ 👤 Tier:     \(tierDisplay)
             """
             if let email = usageData.email {
-                output += "\n║ 📧 Email:    \(email)"
+                output += "\n║ 📧 Email:    \(maskEmail(email))"
             }
 
         case .cursor:
@@ -183,7 +197,7 @@ enum Log {
             ║ 👤 Plan:     \(usageData.planType ?? "Pro")
             """
             if let email = usageData.email {
-                output += "\n║ 📧 Email:    \(email)"
+                output += "\n║ 📧 Email:    \(maskEmail(email))"
             }
 
         case .glm:
@@ -204,6 +218,6 @@ enum Log {
         ╚══════════════════════════════════════════════════════════════╝
         """
 
-        log.info("\(output, privacy: .public)")
+        log.info("\(output, privacy: .private)")
     }
 }

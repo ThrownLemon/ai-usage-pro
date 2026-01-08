@@ -111,15 +111,6 @@ class GLMTrackerService {
     }
 
     func fetchGLMUsage(apiToken: String) async throws -> GLMUsageInfo {
-        // Get current time range for the query (last 5 hours for session)
-        let now = Date()
-        let fiveHoursAgo = now.addingTimeInterval(-5 * 60 * 60)
-
-        // The quota/limit endpoint returns current usage data without requiring time range params
-        // Time variables kept for future use with model-usage and tool-usage endpoints
-        _ = fiveHoursAgo
-        _ = now
-
         // Fetch quota limits which gives us both session (TOKENS_LIMIT) and monthly (TIME_LIMIT) data
         guard let url = URL(string: quotaLimitURL) else {
             throw GLMTrackerError.invalidAPIURL
@@ -127,6 +118,7 @@ class GLMTrackerService {
 
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
+        request.timeoutInterval = Constants.Timeouts.networkRequestTimeout
         request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 

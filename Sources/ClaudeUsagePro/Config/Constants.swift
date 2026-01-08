@@ -30,6 +30,8 @@ enum Constants {
         static let defaultRefreshInterval: TimeInterval = 300
         /// Delay after ping before fetching data (seconds)
         static let pingRefreshDelay: TimeInterval = 2.0
+        /// Network request timeout (seconds)
+        static let networkRequestTimeout: TimeInterval = 30
     }
 
     // MARK: - Notifications
@@ -55,6 +57,8 @@ enum Constants {
     enum GLM {
         /// Rolling window for session limits (hours)
         static let sessionWindowHours: Double = 5.0
+        /// Display label for the session window
+        static let sessionWindowLabel = "5 Hours Quota"
     }
 
     // MARK: - Bundle Identifiers

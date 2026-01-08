@@ -11,7 +11,7 @@ final class KeychainServiceTests: XCTestCase {
 
     func testSaveAndLoadData() throws {
         // Given
-        let testData = "Hello, Keychain!".data(using: .utf8)!
+        let testData = Data("Hello, Keychain!".utf8)
 
         // When
         try KeychainService.save(testData, forKey: testKey)
@@ -43,7 +43,7 @@ final class KeychainServiceTests: XCTestCase {
 
     func testDeleteKey() throws {
         // Given
-        let testData = "Delete me".data(using: .utf8)!
+        let testData = Data("Delete me".utf8)
         try KeychainService.save(testData, forKey: testKey)
 
         // When
@@ -56,8 +56,8 @@ final class KeychainServiceTests: XCTestCase {
 
     func testOverwriteExistingKey() throws {
         // Given
-        let originalData = "Original".data(using: .utf8)!
-        let newData = "Updated".data(using: .utf8)!
+        let originalData = Data("Original".utf8)
+        let newData = Data("Updated".utf8)
 
         // When
         try KeychainService.save(originalData, forKey: testKey)

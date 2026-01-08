@@ -636,11 +636,15 @@ class AppState {
     }
 
     /// Migrate credentials from old UserDefaults storage to Keychain (one-time migration)
+    /// Only marks migration complete if ALL credentials are successfully migrated.
+    /// If any migration fails, it will be retried on subsequent launches.
     private func migrateCredentialsFromUserDefaults() {
         let migrationKey = Constants.UserDefaultsKeys.keychainMigrationComplete
         guard !defaults.bool(forKey: migrationKey) else { return }
 
         Log.info(Log.Category.keychain, "Starting migration from UserDefaults to Keychain...")
+
+        var allMigrationsSucceeded = true
 
         // Try to load old-format accounts that included credentials
         if let data = defaults.data(forKey: accountsKey) {
@@ -662,7 +666,8 @@ class AppState {
                             try KeychainService.save(cookies, forKey: KeychainService.cookiesKey(for: legacy.id))
                             Log.info(Log.Category.keychain, "Migrated cookies for account \(legacy.id)")
                         } catch {
-                            Log.error(Log.Category.keychain, "Failed to migrate cookies: \(error)")
+                            Log.error(Log.Category.keychain, "Failed to migrate cookies for \(legacy.id): \(error)")
+                            allMigrationsSucceeded = false
                         }
                     }
 
@@ -672,17 +677,25 @@ class AppState {
                             try KeychainService.save(token, forKey: KeychainService.apiTokenKey(for: legacy.id))
                             Log.info(Log.Category.keychain, "Migrated API token for account \(legacy.id)")
                         } catch {
-                            Log.error(Log.Category.keychain, "Failed to migrate API token: \(error)")
+                            Log.error(Log.Category.keychain, "Failed to migrate API token for \(legacy.id): \(error)")
+                            allMigrationsSucceeded = false
                         }
                     }
                 }
             } catch {
                 Log.error(Log.Category.keychain, "Failed to decode legacy accounts: \(error)")
+                allMigrationsSucceeded = false
             }
         }
 
-        defaults.set(true, forKey: migrationKey)
-        Log.info(Log.Category.keychain, "Migration complete")
+        // Only mark migration complete if ALL credentials migrated successfully
+        // This allows retry on subsequent launches if Keychain was temporarily unavailable
+        if allMigrationsSucceeded {
+            defaults.set(true, forKey: migrationKey)
+            Log.info(Log.Category.keychain, "Migration complete")
+        } else {
+            Log.warning(Log.Category.keychain, "Migration incomplete - will retry on next launch")
+        }
     }
 
     var menuBarIconState: MenuBarIconState {

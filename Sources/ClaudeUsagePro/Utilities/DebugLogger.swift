@@ -68,6 +68,7 @@ enum Log {
         static let api = "ClaudeAPI"
         static let keychain = "Keychain"
         static let usageStats = "UsageStats"
+        static let cache = "Cache"
     }
 
     // MARK: - Privacy Helpers
@@ -92,6 +93,7 @@ enum Log {
     static func debug(_ category: String, _ message: String) {
         guard isDebugEnabled else { return }
         logger(for: category).debug("[\(category, privacy: .public)] \(message, privacy: .private)")
+        printToTerminal("🔍 [\(category)] \(message)")
     }
 
     /// Log informational message
@@ -100,6 +102,7 @@ enum Log {
     ///   - message: Message to log (redacted in release builds to protect sensitive data)
     static func info(_ category: String, _ message: String) {
         logger(for: category).info("[\(category, privacy: .public)] \(message, privacy: .private)")
+        printToTerminal("ℹ️ [\(category)] \(message)")
     }
 
     /// Log warning message
@@ -108,6 +111,7 @@ enum Log {
     ///   - message: Message to log (redacted in release builds to protect sensitive data)
     static func warning(_ category: String, _ message: String) {
         logger(for: category).warning("[\(category, privacy: .public)] ⚠️ \(message, privacy: .private)")
+        printToTerminal("⚠️ [\(category)] \(message)")
     }
 
     /// Log error message
@@ -116,6 +120,14 @@ enum Log {
     ///   - message: Message to log (redacted in release builds to protect sensitive data)
     static func error(_ category: String, _ message: String) {
         logger(for: category).error("[\(category, privacy: .public)] ❌ \(message, privacy: .private)")
+        printToTerminal("❌ [\(category)] \(message)")
+    }
+
+    /// Print to terminal (stderr) when running from command line
+    private static func printToTerminal(_ message: String) {
+        #if DEBUG
+        fputs("\(message)\n", stderr)
+        #endif
     }
 
     /// Log critical fault (use sparingly - for unrecoverable errors)

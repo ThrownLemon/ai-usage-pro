@@ -15,6 +15,9 @@ let package = Package(
             name: "ClaudeUsagePro",
             dependencies: [],
             path: "Sources/ClaudeUsagePro",
+            resources: [
+                .process("Assets.xcassets")
+            ],
             linkerSettings: [
                 .linkedLibrary("sqlite3")
             ]
@@ -23,6 +26,6 @@ let package = Package(
             name: "ClaudeUsageProTests",
             dependencies: ["ClaudeUsagePro"],
             path: "Tests/ClaudeUsageProTests"
-        )
+        ),
     ]
 )

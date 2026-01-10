@@ -159,7 +159,7 @@ final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Send
                     guard let self = self else { return }
                     if let pending = self.pendingFetchContinuation {
                         var data = usageData
-                        data.sessionResetDisplay = usageData.sessionReset
+                        data.sessionResetDisplay = UsageData.formatSessionResetDisplay(usageData.sessionReset)
                         pending.resume(returning: data)
                         self.pendingFetchContinuation = nil
                     }

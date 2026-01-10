@@ -73,7 +73,7 @@ enum Constants {
         /// Rolling window for session limits (hours)
         static let sessionWindowHours: Double = 5.0
         /// Display label for the session window
-        static let sessionWindowLabel = "5 Hours Quota"
+        static let sessionWindowLabel = "Session usage"
     }
 
     // MARK: - Bundle Identifiers

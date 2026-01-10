@@ -34,6 +34,26 @@ struct UsageData: Hashable, Codable {
     var glmSessionLimit: Double?
     var glmMonthlyUsed: Double?
     var glmMonthlyLimit: Double?
+
+    // OAuth API extended fields (model-specific usage)
+    /// Opus model 7-day usage percentage (0.0-1.0), nil if not available
+    var opusPercentage: Double?
+    /// Opus model reset time display string
+    var opusReset: String?
+    /// Sonnet model 7-day usage percentage (0.0-1.0), nil if not available
+    var sonnetPercentage: Double?
+    /// Sonnet model reset time display string
+    var sonnetReset: String?
+
+    /// Formats a session reset string with "Resets in" prefix for consistency with GLM display.
+    /// - Parameter sessionReset: The raw reset string (e.g., "3h 45m" or "Ready")
+    /// - Returns: Formatted display string (e.g., "Resets in 3h 45m" or "Ready")
+    static func formatSessionResetDisplay(_ sessionReset: String) -> String {
+        if sessionReset == "Ready" || sessionReset.isEmpty {
+            return sessionReset
+        }
+        return "Resets in \(sessionReset)"
+    }
 }
 
 /// Represents a user account with credentials and usage data.
@@ -54,6 +74,14 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     var cookieProps: [[String: String]] = []
     /// API token for GLM accounts (loaded from Keychain)
     var apiToken: String?
+    /// OAuth token for Claude accounts using the official Anthropic API (loaded from Keychain)
+    var oauthToken: String?
+    /// OAuth refresh token for obtaining new access tokens (loaded from Keychain)
+    var oauthRefreshToken: String?
+
+    // Transient state (not persisted)
+    /// Indicates the account needs re-authentication (token expired and refresh failed)
+    var needsReauth: Bool = false
 
     // CodingKeys excludes sensitive data (cookieProps, apiToken)
     // These are stored separately in Keychain
@@ -70,6 +98,9 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         // Sensitive data loaded separately from Keychain
         cookieProps = []
         apiToken = nil
+        oauthToken = nil
+        oauthRefreshToken = nil
+        needsReauth = false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -95,6 +126,12 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
             if let token = apiToken {
                 try KeychainService.save(token, forKey: KeychainService.apiTokenKey(for: id))
             }
+            if let token = oauthToken {
+                try KeychainService.save(token, forKey: KeychainService.oauthTokenKey(for: id))
+            }
+            if let refreshToken = oauthRefreshToken {
+                try KeychainService.save(refreshToken, forKey: KeychainService.oauthRefreshTokenKey(for: id))
+            }
         } catch {
             Log.error(Log.Category.keychain, "Failed to save credentials: \(error)")
             success = false
@@ -104,15 +141,29 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
 
     /// Load sensitive credentials from Keychain
     mutating func loadCredentialsFromKeychain() {
+        Log.debug(Log.Category.keychain, "Loading credentials for account \(id) (\(name))")
         do {
             if let cookies: [[String: String]] = try KeychainService.load(forKey: KeychainService.cookiesKey(for: id)) {
                 cookieProps = cookies
+                Log.debug(Log.Category.keychain, "  Loaded \(cookies.count) cookies")
             }
             if let token = try KeychainService.loadString(forKey: KeychainService.apiTokenKey(for: id)) {
                 apiToken = token
+                Log.debug(Log.Category.keychain, "  Loaded API token")
+            }
+            if let token = try KeychainService.loadString(forKey: KeychainService.oauthTokenKey(for: id)) {
+                oauthToken = token
+                Log.debug(Log.Category.keychain, "  Loaded OAuth token (prefix: \(token.prefix(15))...)")
+            }
+            if let refreshToken = try KeychainService.loadString(forKey: KeychainService.oauthRefreshTokenKey(for: id)) {
+                oauthRefreshToken = refreshToken
+                Log.debug(Log.Category.keychain, "  Loaded OAuth refresh token")
+            }
+            if cookieProps.isEmpty && apiToken == nil && oauthToken == nil {
+                Log.warning(Log.Category.keychain, "  No credentials found in keychain for account \(id)")
             }
         } catch {
-            Log.error(Log.Category.keychain, "Failed to load credentials: \(error)")
+            Log.error(Log.Category.keychain, "Failed to load credentials for \(id): \(error)")
         }
     }
 
@@ -121,6 +172,8 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         do {
             try KeychainService.delete(forKey: KeychainService.cookiesKey(for: id))
             try KeychainService.delete(forKey: KeychainService.apiTokenKey(for: id))
+            try KeychainService.delete(forKey: KeychainService.oauthTokenKey(for: id))
+            try KeychainService.delete(forKey: KeychainService.oauthRefreshTokenKey(for: id))
         } catch {
             Log.error(Log.Category.keychain, "Failed to delete credentials: \(error)")
         }
@@ -199,6 +252,55 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         self.apiToken = apiToken
         self.usageData = usageData
         self.cookieProps = []
+    }
+
+    /// Creates a new Claude account with an OAuth token (uses official Anthropic API).
+    /// - Parameters:
+    ///   - name: Display name for the account
+    ///   - oauthToken: OAuth token from Claude Code or manual entry
+    ///   - refreshToken: Optional refresh token for obtaining new access tokens
+    init(name: String, oauthToken: String, refreshToken: String? = nil) {
+        self.name = name
+        self.type = .claude
+        self.oauthToken = oauthToken
+        self.oauthRefreshToken = refreshToken
+        self.cookieProps = []
+    }
+
+    /// Creates a Claude OAuth account with a specific ID, token, and optional usage data.
+    /// - Parameters:
+    ///   - id: Unique identifier
+    ///   - name: Display name
+    ///   - oauthToken: OAuth token
+    ///   - refreshToken: Optional refresh token for obtaining new access tokens
+    ///   - usageData: Pre-existing usage data
+    init(id: UUID, name: String, oauthToken: String, refreshToken: String? = nil, usageData: UsageData?) {
+        self.id = id
+        self.name = name
+        self.type = .claude
+        self.oauthToken = oauthToken
+        self.oauthRefreshToken = refreshToken
+        self.usageData = usageData
+        self.cookieProps = []
+    }
+
+    // MARK: - Convenience Properties
+
+    /// Whether this account uses OAuth authentication (preferred method)
+    var usesOAuth: Bool {
+        oauthToken != nil && !oauthToken!.isEmpty
+    }
+
+    /// Whether this account has any valid credentials
+    var hasCredentials: Bool {
+        switch type {
+        case .claude:
+            return usesOAuth || !cookieProps.isEmpty
+        case .cursor:
+            return !cookieProps.isEmpty
+        case .glm:
+            return apiToken != nil && !apiToken!.isEmpty
+        }
     }
 
     // Hashable

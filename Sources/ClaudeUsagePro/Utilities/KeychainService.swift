@@ -29,7 +29,11 @@ struct KeychainService {
     }
 
     /// The service identifier used to group related Keychain items
-    private static let service = Constants.BundleIdentifiers.current
+    /// Using a fixed identifier to ensure consistency across different run configurations
+    private static let service = "com.claudeusagepro"
+
+    /// Alternate service names to check for legacy data (migration support)
+    private static let legacyServices = ["ClaudeUsagePro", Bundle.main.bundleIdentifier].compactMap { $0 }
 
     // MARK: - Core Operations
 
@@ -39,10 +43,12 @@ struct KeychainService {
     ///   - key: The unique key to identify this item
     /// - Throws: KeychainError if the operation fails
     static func save(_ data: Data, forKey key: String) throws {
-        // First try to delete any existing item
+        // First try to delete any existing item (from both keychain types)
         try? delete(forKey: key)
+        try? deleteFromLegacyKeychain(forKey: key)
 
-        let query: [String: Any] = [
+        // Try saving to data protection keychain first
+        let dataProtectionQuery: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
@@ -51,11 +57,42 @@ struct KeychainService {
             kSecUseDataProtectionKeychain as String: true
         ]
 
-        let status = SecItemAdd(query as CFDictionary, nil)
+        var status = SecItemAdd(dataProtectionQuery as CFDictionary, nil)
+
+        if status == errSecSuccess {
+            Log.debug(Log.Category.keychain, "Saved to data protection keychain: \(key)")
+            return
+        }
+
+        // Fall back to regular keychain if data protection fails
+        Log.warning(Log.Category.keychain, "Data protection keychain save failed (\(status)), trying regular keychain")
+
+        let regularQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key,
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
+        ]
+
+        status = SecItemAdd(regularQuery as CFDictionary, nil)
 
         guard status == errSecSuccess else {
+            Log.error(Log.Category.keychain, "Failed to save to keychain: \(status)")
             throw KeychainError.unableToSave(status)
         }
+
+        Log.debug(Log.Category.keychain, "Saved to regular keychain: \(key)")
+    }
+
+    /// Delete from legacy (non-data-protection) keychain
+    private static func deleteFromLegacyKeychain(forKey key: String) throws {
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key
+        ]
+        SecItemDelete(query as CFDictionary)
     }
 
     /// Load data from the Keychain
@@ -63,9 +100,30 @@ struct KeychainService {
     /// - Returns: The stored data, or nil if not found
     /// - Throws: KeychainError if the operation fails (other than item not found)
     static func load(forKey key: String) throws -> Data? {
+        // First try the primary service
+        if let data = try loadFromService(service, forKey: key) {
+            return data
+        }
+
+        // Fall back to legacy services for migration
+        for legacyService in legacyServices where legacyService != service {
+            if let data = try loadFromService(legacyService, forKey: key) {
+                Log.info(Log.Category.keychain, "Found data in legacy service '\(legacyService)', migrating to '\(service)'")
+                // Migrate to the primary service
+                try? save(data, forKey: key)
+                return data
+            }
+        }
+
+        return nil
+    }
+
+    /// Internal helper to load from a specific service
+    private static func loadFromService(_ serviceName: String, forKey key: String) throws -> Data? {
+        // First try with data protection keychain
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: service,
+            kSecAttrService as String: serviceName,
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
@@ -73,7 +131,19 @@ struct KeychainService {
         ]
 
         var result: AnyObject?
-        let status = SecItemCopyMatching(query as CFDictionary, &result)
+        var status = SecItemCopyMatching(query as CFDictionary, &result)
+
+        // If not found, try without data protection keychain (for legacy items)
+        if status == errSecItemNotFound {
+            let legacyQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: serviceName,
+                kSecAttrAccount as String: key,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne
+            ]
+            status = SecItemCopyMatching(legacyQuery as CFDictionary, &result)
+        }
 
         if status == errSecItemNotFound {
             return nil
@@ -166,6 +236,20 @@ struct KeychainService {
     /// - Returns: A unique key string for the account's API token
     static func apiTokenKey(for accountId: UUID) -> String {
         return "apiToken_\(accountId.uuidString)"
+    }
+
+    /// Generate a Keychain key for storing an OAuth token for a specific account
+    /// - Parameter accountId: The account's UUID
+    /// - Returns: A unique key string for the account's OAuth token
+    static func oauthTokenKey(for accountId: UUID) -> String {
+        return "oauthToken_\(accountId.uuidString)"
+    }
+
+    /// Generate a Keychain key for storing an OAuth refresh token for a specific account
+    /// - Parameter accountId: The account's UUID
+    /// - Returns: A unique key string for the account's OAuth refresh token
+    static func oauthRefreshTokenKey(for accountId: UUID) -> String {
+        return "oauthRefreshToken_\(accountId.uuidString)"
     }
 
     /// Delete all Keychain items for this app's service

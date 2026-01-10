@@ -519,6 +519,12 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                     var weeklyPct = 0.0
                     var weeklyReset = "Ready"
                     
+                    // Model-specific weekly quotas (for Max plan)
+                    var sonnetPct: Double?
+                    var sonnetReset: String?
+                    var opusPct: Double?
+                    var opusReset: String?
+
                     if let usage = dict["usage"] as? [String: Any] {
                         // Parse Session (5-hour)
                         if let fiveHour = usage["five_hour"] as? [String: Any] {
@@ -533,7 +539,7 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                                 sessionReset = "Ready"
                             }
                         }
-                        
+
                         // Parse Weekly (7-day)
                         if let sevenDay = usage["seven_day"] as? [String: Any] {
                             if let util = sevenDay["utilization"] as? Double {
@@ -543,14 +549,34 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                                 weeklyReset = self.formatResetDate(isoDate: resetDateStr)
                             }
                         }
+
+                        // Parse Sonnet-specific weekly quota (Max plan)
+                        if let sevenDaySonnet = usage["seven_day_sonnet"] as? [String: Any] {
+                            if let util = sevenDaySonnet["utilization"] as? Double {
+                                sonnetPct = util / 100.0
+                            }
+                            if let resetDateStr = sevenDaySonnet["resets_at"] as? String {
+                                sonnetReset = self.formatResetDate(isoDate: resetDateStr)
+                            }
+                        }
+
+                        // Parse Opus-specific weekly quota (Max plan)
+                        if let sevenDayOpus = usage["seven_day_opus"] as? [String: Any] {
+                            if let util = sevenDayOpus["utilization"] as? Double {
+                                opusPct = util / 100.0
+                            }
+                            if let resetDateStr = sevenDayOpus["resets_at"] as? String {
+                                opusReset = self.formatResetDate(isoDate: resetDateStr)
+                            }
+                        }
                     }
                     
-                    Log.info(category, "FINAL PARSED - sessionPct=\(sessionPct) sessionReset=\(sessionReset) weeklyPct=\(weeklyPct) weeklyReset=\(weeklyReset)")
-                    
+                    Log.info(category, "FINAL PARSED - sessionPct=\(sessionPct) sessionReset=\(sessionReset) weeklyPct=\(weeklyPct) weeklyReset=\(weeklyReset) sonnetPct=\(String(describing: sonnetPct)) opusPct=\(String(describing: opusPct))")
+
                     let data = UsageData(
                         sessionPercentage: sessionPct,
                         sessionReset: sessionReset,
-                        sessionResetDisplay: sessionReset,
+                        sessionResetDisplay: UsageData.formatSessionResetDisplay(sessionReset),
                         weeklyPercentage: weeklyPct,
                         weeklyReset: weeklyReset,
                         weeklyResetDisplay: weeklyReset,
@@ -558,7 +584,11 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                         email: email,
                         fullName: fullName,
                         orgName: orgName,
-                        planType: planType
+                        planType: planType,
+                        opusPercentage: opusPct,
+                        opusReset: opusReset,
+                        sonnetPercentage: sonnetPct,
+                        sonnetReset: sonnetReset
                     )
                     self.onUpdate?(data)
                 }

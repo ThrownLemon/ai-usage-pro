@@ -135,7 +135,7 @@ class ClaudeAPIService {
         return UsageData(
             sessionPercentage: sessionPct,
             sessionReset: sessionReset,
-            sessionResetDisplay: sessionReset,
+            sessionResetDisplay: UsageData.formatSessionResetDisplay(sessionReset),
             weeklyPercentage: weeklyPct,
             weeklyReset: weeklyReset,
             weeklyResetDisplay: weeklyReset,

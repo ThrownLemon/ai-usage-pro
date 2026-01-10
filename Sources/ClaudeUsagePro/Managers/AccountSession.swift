@@ -24,6 +24,7 @@ class AccountSession: Identifiable {
     private var tracker: TrackerService?
     private var cursorTracker: CursorTrackerService?
     private var glmTracker: GLMTrackerService?
+    private var oauthService: AnthropicOAuthService?
     // These properties need to be accessible from deinit (which is nonisolated).
     // Timer.invalidate() and Task.cancel() are thread-safe operations.
     // Using @ObservationIgnored to prevent the @Observable macro from transforming them.
@@ -39,7 +40,14 @@ class AccountSession: Identifiable {
 
         switch account.type {
         case .claude:
-            self.tracker = TrackerService()
+            // Prefer OAuth service if available, fall back to WebView tracker
+            if account.usesOAuth {
+                self.oauthService = AnthropicOAuthService()
+                Log.debug(category, "Using OAuth API for \(account.name) (token prefix: \(account.oauthToken?.prefix(15) ?? "nil")...)")
+            } else {
+                self.tracker = TrackerService()
+                Log.debug(category, "Using WebView tracker for \(account.name) (usesOAuth=false, token=\(account.oauthToken != nil ? "present" : "nil"))")
+            }
         case .cursor:
             self.cursorTracker = CursorTrackerService()
         case .glm:
@@ -127,7 +135,23 @@ class AccountSession: Identifiable {
 
         switch account.type {
         case .claude:
-            tracker?.fetchUsage(cookies: account.cookies)
+            if let oauthService = oauthService, let token = account.oauthToken {
+                // Use OAuth API (preferred, faster, more reliable)
+                fetchTask = Task { [weak self] in
+                    guard let self = self else { return }
+                    do {
+                        let usageData = try await oauthService.fetchUsage(token: token)
+                        guard !Task.isCancelled else { return }
+                        self.handleOAuthUsageResult(.success(usageData))
+                    } catch {
+                        guard !Task.isCancelled else { return }
+                        self.handleOAuthUsageResult(.failure(error))
+                    }
+                }
+            } else {
+                // Fall back to WebView-based tracking
+                tracker?.fetchUsage(cookies: account.cookies)
+            }
         case .cursor:
             fetchTask = Task { [weak self] in
                 guard let self = self else { return }
@@ -163,6 +187,107 @@ class AccountSession: Identifiable {
         }
     }
     
+    private func handleOAuthUsageResult(_ result: Result<UsageData, Error>) {
+        self.isFetching = false
+        switch result {
+        case .success(var usageData):
+            // Clear needsReauth on successful fetch
+            account.needsReauth = false
+
+            // Copy email from previous data if OAuth didn't return it
+            if usageData.email == nil, let existingEmail = account.usageData?.email {
+                usageData.email = existingEmail
+            }
+            usageData.sessionResetDisplay = UsageData.formatSessionResetDisplay(usageData.sessionReset)
+            self.updateWithUsageData(usageData)
+
+            // Cache the successful result
+            Task {
+                await UsageCache.shared.set(usageData, for: account.id)
+            }
+
+            // Update account name if we have email and name is generic
+            if let email = usageData.email, account.name.starts(with: "Account ") || account.name.starts(with: "Claude Code") {
+                account.name = email
+            }
+            Log.debug(category, "OAuth fetch successful for \(account.name)")
+        case .failure(let error):
+            // Check if this is a 401 error that might be recoverable via refresh
+            if case AnthropicOAuthError.httpError(let statusCode, _) = error, statusCode == 401 {
+                // Try to refresh the token
+                attemptTokenRefresh()
+                return
+            }
+
+            self.lastError = error
+            Log.error(category, "OAuth fetch failed for \(account.name): \(error.localizedDescription)")
+
+            // Try to use cached data as fallback
+            Task { @MainActor in
+                if let cached = await UsageCache.shared.getLastKnown(for: self.account.id) {
+                    Log.info(self.category, "Using cached data (stale: \(cached.isStale)) for \(self.account.name)")
+                    self.updateWithUsageData(cached.data)
+                }
+            }
+        }
+    }
+
+    /// Attempts to refresh the OAuth access token using the refresh token.
+    /// If successful, updates the account and retries the fetch.
+    /// If failed, marks the account as needing re-authentication.
+    private func attemptTokenRefresh() {
+        guard let refreshToken = account.oauthRefreshToken else {
+            Log.warning(category, "No refresh token available for \(account.name), marking as needs re-auth")
+            account.needsReauth = true
+            lastError = AnthropicOAuthError.httpError(statusCode: 401, message: "Token expired and no refresh token available")
+            fallbackToCachedData()
+            return
+        }
+
+        guard let oauthService = oauthService else {
+            Log.error(category, "No OAuth service available for refresh")
+            account.needsReauth = true
+            fallbackToCachedData()
+            return
+        }
+
+        Log.info(category, "Attempting to refresh token for \(account.name)...")
+
+        Task { @MainActor in
+            do {
+                let tokenResponse = try await oauthService.refreshAccessToken(refreshToken: refreshToken)
+
+                // Update account with new tokens
+                self.account.oauthToken = tokenResponse.accessToken
+                if let newRefreshToken = tokenResponse.refreshToken {
+                    self.account.oauthRefreshToken = newRefreshToken
+                }
+                self.account.saveCredentialsToKeychain()
+
+                Log.info(self.category, "Token refresh successful for \(self.account.name), retrying fetch...")
+
+                // Retry the fetch with the new token
+                self.fetchNow()
+
+            } catch {
+                Log.error(self.category, "Token refresh failed for \(self.account.name): \(error.localizedDescription)")
+                self.account.needsReauth = true
+                self.lastError = error
+                self.fallbackToCachedData()
+            }
+        }
+    }
+
+    /// Falls back to cached data when authentication fails
+    private func fallbackToCachedData() {
+        Task { @MainActor in
+            if let cached = await UsageCache.shared.getLastKnown(for: self.account.id) {
+                Log.info(self.category, "Using cached data (stale: \(cached.isStale)) for \(self.account.name)")
+                self.updateWithUsageData(cached.data)
+            }
+        }
+    }
+
     private func handleCursorUsageResult(_ result: Result<CursorUsageInfo, Error>) {
         // Already on @MainActor, no need for DispatchQueue.main
         self.isFetching = false
@@ -187,12 +312,25 @@ class AccountSession: Identifiable {
             )
             self.updateWithUsageData(usageData)
 
+            // Cache the successful result
+            Task {
+                await UsageCache.shared.set(usageData, for: account.id)
+            }
+
             if let email = info.email, self.account.name.starts(with: "Account ") || self.account.name.starts(with: "Cursor") {
                 self.account.name = "Cursor (\(email))"
             }
         case .failure(let error):
             self.lastError = error
             Log.error(Log.Category.cursorTracker, "Fetch failed: \(error)")
+
+            // Try to use cached data as fallback
+            Task { @MainActor in
+                if let cached = await UsageCache.shared.getLastKnown(for: self.account.id) {
+                    Log.info(self.category, "Using cached data (stale: \(cached.isStale)) for \(self.account.name)")
+                    self.updateWithUsageData(cached.data)
+                }
+            }
         }
     }
 
@@ -228,12 +366,25 @@ class AccountSession: Identifiable {
             )
             self.updateWithUsageData(usageData)
 
+            // Cache the successful result
+            Task {
+                await UsageCache.shared.set(usageData, for: account.id)
+            }
+
             if self.account.name.starts(with: "Account ") || self.account.name.starts(with: "GLM") {
                 self.account.name = "GLM Coding Plan"
             }
         case .failure(let error):
             self.lastError = error
             Log.error(Log.Category.glmTracker, "Fetch failed: \(error)")
+
+            // Try to use cached data as fallback
+            Task { @MainActor in
+                if let cached = await UsageCache.shared.getLastKnown(for: self.account.id) {
+                    Log.info(self.category, "Using cached data (stale: \(cached.isStale)) for \(self.account.name)")
+                    self.updateWithUsageData(cached.data)
+                }
+            }
         }
     }
 
@@ -308,7 +459,7 @@ class AccountSession: Identifiable {
             Task { @MainActor in
                 self.isFetching = false
                 var data = usageData
-                data.sessionResetDisplay = usageData.sessionReset
+                data.sessionResetDisplay = UsageData.formatSessionResetDisplay(usageData.sessionReset)
                 self.updateWithUsageData(data)
             }
         }

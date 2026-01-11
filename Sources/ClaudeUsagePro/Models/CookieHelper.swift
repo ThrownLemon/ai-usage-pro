@@ -1,4 +1,5 @@
 import Foundation
+import WebKit
 
 /// Wrapper for cookie properties that can be encoded/decoded.
 struct CookieProperties: Codable {

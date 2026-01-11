@@ -259,56 +259,36 @@ final class GLMTrackerService: @unchecked Sendable {
         }
     }
 
-    // Additional endpoints from the plugin (for future use)
+    // MARK: - Additional Endpoints (for future use)
+
+    /// Fetch model usage data for a time range.
     func fetchModelUsage(apiToken: String, startTime: Date, endTime: Date) async throws -> Data {
-        let dateFormatter = ISO8601DateFormatter()
-        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-
-        let startTimeStr = dateFormatter.string(from: startTime)
-        let endTimeStr = dateFormatter.string(from: endTime)
-
-        guard var urlComponents = URLComponents(string: modelUsageURL) else {
-            throw GLMTrackerError.invalidAPIURL
-        }
-
-        urlComponents.queryItems = [
-            URLQueryItem(name: "startTime", value: startTimeStr),
-            URLQueryItem(name: "endTime", value: endTimeStr)
-        ]
-
-        guard let url = urlComponents.url else {
-            throw GLMTrackerError.invalidAPIURL
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.timeoutInterval = Constants.Timeouts.networkRequestTimeout
-        request.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            let responseType = type(of: response)
-            Log.error(category, "Unexpected response type in fetchModelUsage: \(responseType)")
-            throw GLMTrackerError.nonHTTPResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            throw GLMTrackerError.badResponse(statusCode: httpResponse.statusCode)
-        }
-
-        return data
+        try await fetchUsageData(endpoint: modelUsageURL, apiToken: apiToken, startTime: startTime, endTime: endTime)
     }
 
+    /// Fetch tool usage data for a time range.
     func fetchToolUsage(apiToken: String, startTime: Date, endTime: Date) async throws -> Data {
+        try await fetchUsageData(endpoint: toolUsageURL, apiToken: apiToken, startTime: startTime, endTime: endTime)
+    }
+
+    // MARK: - Private Helpers
+
+    /// Shared helper for fetching usage data from time-range endpoints.
+    /// - Parameters:
+    ///   - endpoint: The API endpoint URL string
+    ///   - apiToken: Bearer token for authentication
+    ///   - startTime: Start of the time range
+    ///   - endTime: End of the time range
+    /// - Returns: Raw response data
+    /// - Throws: GLMTrackerError on failure
+    private func fetchUsageData(endpoint: String, apiToken: String, startTime: Date, endTime: Date) async throws -> Data {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
         let startTimeStr = dateFormatter.string(from: startTime)
         let endTimeStr = dateFormatter.string(from: endTime)
 
-        guard var urlComponents = URLComponents(string: toolUsageURL) else {
+        guard var urlComponents = URLComponents(string: endpoint) else {
             throw GLMTrackerError.invalidAPIURL
         }
 
@@ -331,7 +311,7 @@ final class GLMTrackerService: @unchecked Sendable {
 
         guard let httpResponse = response as? HTTPURLResponse else {
             let responseType = type(of: response)
-            Log.error(category, "Unexpected response type in fetchToolUsage: \(responseType)")
+            Log.error(category, "Unexpected response type for \(endpoint): \(responseType)")
             throw GLMTrackerError.nonHTTPResponse
         }
 

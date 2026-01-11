@@ -1323,7 +1323,9 @@ class AppState {
             type: .claude
         )
         // Save cookies to Keychain
-        newAccount.saveCredentialsToKeychain()
+        if !newAccount.saveCredentialsToKeychain() {
+            Log.warning(Log.Category.app, "Failed to save credentials to Keychain for new account - credentials may not persist")
+        }
 
         let session = AccountSession(account: newAccount)
         sessions.append(session)
@@ -1355,7 +1357,9 @@ class AppState {
             usageData: nil
         )
         // Save OAuth token and refresh token to Keychain
-        newAccount.saveCredentialsToKeychain()
+        if !newAccount.saveCredentialsToKeychain() {
+            Log.warning(Log.Category.app, "Failed to save OAuth credentials to Keychain - credentials may not persist")
+        }
 
         let session = AccountSession(account: newAccount)
         sessions.append(session)
@@ -1384,7 +1388,9 @@ class AppState {
         sessions[sessionIndex].account.needsReauth = false
 
         // Save new credentials to Keychain
-        sessions[sessionIndex].account.saveCredentialsToKeychain()
+        if !sessions[sessionIndex].account.saveCredentialsToKeychain() {
+            Log.warning(Log.Category.app, "Failed to save re-auth credentials to Keychain - credentials may not persist")
+        }
 
         // Save accounts and trigger a fetch
         saveAccounts()
@@ -1422,7 +1428,9 @@ class AppState {
             usageData: nil
         )
         // Save API token to Keychain
-        newAccount.saveCredentialsToKeychain()
+        if !newAccount.saveCredentialsToKeychain() {
+            Log.warning(Log.Category.app, "Failed to save GLM API token to Keychain - credentials may not persist")
+        }
 
         let session = AccountSession(account: newAccount)
         sessions.append(session)
@@ -1457,9 +1465,20 @@ class AppState {
     /// - Parameter id: The UUID of the account to remove
     func removeAccount(id: UUID) {
         // Find the account and delete its credentials from Keychain
-        if let session = sessions.first(where: { $0.account.id == id }) {
-            session.account.deleteCredentialsFromKeychain()
+        guard let session = sessions.first(where: { $0.account.id == id }) else {
+            Log.warning(Log.Category.app, "Cannot remove account: not found \(id)")
+            return
         }
+
+        do {
+            try session.account.deleteCredentialsFromKeychain()
+            Log.info(Log.Category.app, "Deleted credentials for account \(session.account.name)")
+        } catch {
+            // Log error but proceed with removal to avoid orphaned UI state
+            // Keychain items may be cleaned up on app reinstall or manually
+            Log.error(Log.Category.app, "Failed to delete credentials for \(id): \(error.localizedDescription)")
+        }
+
         sessions.removeAll { $0.account.id == id }
         saveAccounts()
     }
@@ -1528,7 +1547,10 @@ class AppState {
     /// Migrate credentials from old UserDefaults storage to Keychain (one-time migration)
     /// Only marks migration complete if ALL credentials are successfully migrated.
     /// If any migration fails, it will be retried on subsequent launches.
+    /// Note: Legacy UserDefaults data is intentionally preserved for manual recovery.
     private func migrateCredentialsFromUserDefaults() {
+        // Note: migrationKey tracks whether migration has completed successfully.
+        // Legacy data in accountsKey is intentionally NOT deleted to allow manual recovery.
         let migrationKey = Constants.UserDefaultsKeys.keychainMigrationComplete
         guard !defaults.bool(forKey: migrationKey) else { return }
 
@@ -1582,7 +1604,14 @@ class AppState {
                     }
                 }
             } catch {
-                Log.error(Log.Category.keychain, "Failed to decode legacy accounts: \(error)")
+                // Log detailed diagnostics for decoding failures to help diagnose format mismatches
+                let dataSize = data.count
+                let dataPreview = data.prefix(100).base64EncodedString()
+                Log.error(
+                    Log.Category.keychain,
+                    "Failed to decode legacy accounts from '\(accountsKey)': \(error.localizedDescription). " +
+                    "Data size: \(dataSize) bytes, preview (base64): \(dataPreview)..."
+                )
                 allMigrationsSucceeded = false
             }
         }

@@ -226,16 +226,13 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         }
     }
 
-    /// Delete credentials from Keychain (call when removing account)
-    func deleteCredentialsFromKeychain() {
-        do {
-            try KeychainService.delete(forKey: KeychainService.cookiesKey(for: id))
-            try KeychainService.delete(forKey: KeychainService.apiTokenKey(for: id))
-            try KeychainService.delete(forKey: KeychainService.oauthTokenKey(for: id))
-            try KeychainService.delete(forKey: KeychainService.oauthRefreshTokenKey(for: id))
-        } catch {
-            Log.error(Log.Category.keychain, "Failed to delete credentials: \(error)")
-        }
+    /// Delete credentials from Keychain (call when removing account).
+    /// - Throws: KeychainError if deletion fails for reasons other than item not found
+    func deleteCredentialsFromKeychain() throws {
+        try KeychainService.delete(forKey: KeychainService.cookiesKey(for: id))
+        try KeychainService.delete(forKey: KeychainService.apiTokenKey(for: id))
+        try KeychainService.delete(forKey: KeychainService.oauthTokenKey(for: id))
+        try KeychainService.delete(forKey: KeychainService.oauthRefreshTokenKey(for: id))
     }
     
     /// Display string for the account's tier/plan

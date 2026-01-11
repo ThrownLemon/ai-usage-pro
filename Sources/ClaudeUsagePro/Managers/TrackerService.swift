@@ -594,10 +594,11 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                 }
             case .failure(let error):
                 Log.error(category, "JS Error: \(error.localizedDescription)")
+                self.onError?(error)
             }
         }
     }
-    
+
     // MARK: - Date Formatting Helpers
 
     /// Formats an ISO date string into a human-readable time remaining string.

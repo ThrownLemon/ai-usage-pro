@@ -160,7 +160,15 @@ class AppState {
     }
 
     /// Adds a new Cursor IDE monitoring account.
-    func addCursorAccount() {
+    /// - Returns: True if account was added, false if a Cursor account already exists
+    @discardableResult
+    func addCursorAccount() -> Bool {
+        // Check for existing Cursor account
+        if sessions.contains(where: { $0.account.type == .cursor }) {
+            Log.warning(Log.Category.app, "Cursor account already exists")
+            return false
+        }
+
         let newAccount = ClaudeAccount(
             id: UUID(),
             name: "Cursor Monitoring",
@@ -173,11 +181,20 @@ class AppState {
         saveAccounts()
         subscribeToSessionChanges(session)
         session.startMonitoring()
+        return true
     }
 
     /// Adds a new GLM Coding Plan account with the given API token.
     /// - Parameter apiToken: The GLM API token for authentication
-    func addGLMAccount(apiToken: String) {
+    /// - Returns: True if account was added, false if a GLM account with this token already exists
+    @discardableResult
+    func addGLMAccount(apiToken: String) -> Bool {
+        // Check for existing GLM account with same token
+        if sessions.contains(where: { $0.account.type == .glm && $0.account.apiToken == apiToken }) {
+            Log.warning(Log.Category.app, "GLM account with this token already exists")
+            return false
+        }
+
         let newAccount = ClaudeAccount(
             id: UUID(),
             name: "GLM Coding Plan",
@@ -194,19 +211,20 @@ class AppState {
         saveAccounts()
         subscribeToSessionChanges(session)
         session.startMonitoring()
+        return true
     }
 
     /// Validates a GLM API token by attempting to fetch usage data.
     /// - Parameter token: The API token to validate
-    /// - Returns: True if the token is valid and can fetch usage data
+    /// - Returns: True if the token is valid (successful fetch)
     /// - Throws: GLMTrackerError if the validation fails
     /// - Note: Explicitly marked @MainActor to ensure callers resume on main thread after await
     @MainActor
     static func validateGLMToken(_ token: String) async throws -> Bool {
         let tracker = GLMTrackerService()
-        let info = try await tracker.fetchGLMUsage(apiToken: token)
-        // If we get here without throwing, the token is valid
-        return info.sessionLimit > 0 || info.monthlyLimit > 0
+        // A successful fetch proves the token is valid, regardless of limit values
+        _ = try await tracker.fetchGLMUsage(apiToken: token)
+        return true
     }
 
     private func subscribeToSessionChanges(_ session: AccountSession) {
@@ -363,13 +381,12 @@ class AppState {
                     }
                 }
             } catch {
-                // Log detailed diagnostics for decoding failures to help diagnose format mismatches
+                // Log non-sensitive diagnostics for decoding failures
                 let dataSize = data.count
-                let dataPreview = data.prefix(100).base64EncodedString()
                 Log.error(
                     Log.Category.keychain,
                     "Failed to decode legacy accounts from '\(accountsKey)': \(error.localizedDescription). " +
-                    "Data size: \(dataSize) bytes, preview (base64): \(dataPreview)..."
+                    "Data size: \(dataSize) bytes"
                 )
                 allMigrationsSucceeded = false
             }

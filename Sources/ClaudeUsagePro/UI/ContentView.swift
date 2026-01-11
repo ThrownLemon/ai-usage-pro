@@ -76,8 +76,7 @@ struct ContentView: View {
     @State private var reAuthAccountId: UUID?
 
     /// Current theme selection
-    @AppStorage(ThemeManager.themeKey) private var selectedTheme: String = AppTheme.standard
-        .rawValue
+    @AppStorage(ThemeManager.themeKey) private var selectedTheme: String = AppTheme.standard.rawValue
 
     /// Current color scheme from environment
     @Environment(\.colorScheme) private var colorScheme
@@ -228,6 +227,20 @@ struct ContentView: View {
         selectedTheme = allThemes[nextIndex].rawValue
     }
 
+    /// Returns a re-authenticate handler for Claude OAuth accounts, or nil for other account types.
+    /// - Parameter session: The account session to create a handler for
+    /// - Returns: A closure that triggers re-authentication, or nil if not applicable
+    private func reauthenticateHandler(for session: AccountSession) -> (() -> Void)? {
+        guard session.account.type == .claude && session.account.usesOAuth else {
+            return nil
+        }
+        return {
+            Log.info(Log.Category.app, "Re-authenticate clicked for \(session.account.name)")
+            reAuthAccountId = session.account.id
+            oauthLogin.startLogin()
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Title Bar
@@ -324,11 +337,7 @@ struct ContentView: View {
                         ForEach(appState.sessions) { session in
                             AccountRowSessionView(
                                 session: session,
-                                onReauthenticate: session.account.type == .claude && session.account.usesOAuth ? {
-                                    Log.info(Log.Category.app, "Re-authenticate clicked for \(session.account.name)")
-                                    reAuthAccountId = session.account.id
-                                    oauthLogin.startLogin()
-                                } : nil
+                                onReauthenticate: reauthenticateHandler(for: session)
                             )
                         }
 

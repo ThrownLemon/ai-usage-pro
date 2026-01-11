@@ -157,6 +157,8 @@ struct AddAccountView: View {
     @State private var oauthValidationTask: Task<Void, Never>?
     /// Tracks the current GLM validation task for cancellation
     @State private var glmValidationTask: Task<Void, Never>?
+    /// Tracks the current keychain check task for cancellation
+    @State private var keychainTask: Task<Void, Never>?
 
     @AppStorage(ThemeManager.themeKey) private var selectedTheme: String = AppTheme.standard.rawValue
     @Environment(\.colorScheme) private var colorScheme
@@ -185,9 +187,10 @@ struct AddAccountView: View {
         }
         .frame(maxHeight: .infinity)
         .onDisappear {
-            // Cancel any in-flight validation tasks when view disappears
+            // Cancel any in-flight tasks when view disappears
             oauthValidationTask?.cancel()
             glmValidationTask?.cancel()
+            keychainTask?.cancel()
         }
     }
 
@@ -280,21 +283,27 @@ struct AddAccountView: View {
     }
 
     private func checkForClaudeCodeToken() {
+        // Cancel any existing keychain task
+        keychainTask?.cancel()
         isCheckingKeychain = true
 
-        Task {
+        keychainTask = Task {
             do {
                 let token = try ClaudeCodeKeychainReader.readOAuthToken()
+                guard !Task.isCancelled else { return }
                 await MainActor.run {
                     isCheckingKeychain = false
+                    keychainTask = nil
                     // Add account directly when token is found
                     if !onClaudeOAuth(token) {
                         errorMessage = "This account has already been added"
                     }
                 }
             } catch {
+                guard !Task.isCancelled else { return }
                 await MainActor.run {
                     isCheckingKeychain = false
+                    keychainTask = nil
                     errorMessage = "No Claude Code credentials found"
                 }
             }

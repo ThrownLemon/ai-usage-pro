@@ -141,11 +141,11 @@ final class ClaudeAccountTests: XCTestCase {
         var account = ClaudeAccount(name: "Test", cookies: [])
         account.usageData = UsageData(
             sessionPercentage: 0.5,
-            sessionReset: "Ready",
-            sessionResetDisplay: "Ready",
+            sessionReset: Constants.Status.ready,
+            sessionResetDisplay: Constants.Status.ready,
             weeklyPercentage: 0.3,
-            weeklyReset: "Ready",
-            weeklyResetDisplay: "Ready",
+            weeklyReset: Constants.Status.ready,
+            weeklyResetDisplay: Constants.Status.ready,
             tier: "Pro",
             email: nil,
             fullName: nil,
@@ -189,11 +189,11 @@ final class ClaudeAccountTests: XCTestCase {
         var account = ClaudeAccount(name: "Test Account", cookies: [])
         account.usageData = UsageData(
             sessionPercentage: 0.5,
-            sessionReset: "Ready",
-            sessionResetDisplay: "Ready",
+            sessionReset: Constants.Status.ready,
+            sessionResetDisplay: Constants.Status.ready,
             weeklyPercentage: 0.3,
-            weeklyReset: "Ready",
-            weeklyResetDisplay: "Ready",
+            weeklyReset: Constants.Status.ready,
+            weeklyResetDisplay: Constants.Status.ready,
             tier: "Pro",
             email: "test@example.com",
             fullName: nil,

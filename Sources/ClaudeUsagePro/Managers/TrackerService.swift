@@ -538,10 +538,10 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                             if let resetDateStr = fiveHour["resets_at"] as? String {
                                 sessionReset = DateFormattingHelper.formatResetTime(isoDate: resetDateStr)
                             } else if sessionPct > 0 {
-                                // If utilized but no reset date? Weird, but assume unknown.
-                                // If 0% utilized, "Ready" is correct.
-                                sessionReset = Constants.Status.ready
+                                // If utilized but no reset date, assume unknown.
+                                sessionReset = Constants.Status.unknown
                             }
+                            // If 0% utilized and no reset date, sessionReset stays as "Ready"
                         }
 
                         // Parse Weekly (7-day)

@@ -41,19 +41,16 @@ final class DateFormattingHelperTests: XCTestCase {
     // MARK: - Time Remaining Tests
 
     func testFormatTimeRemainingFuture() {
-        // Given - a date 3 hours and 21 minutes in the future from a fixed reference
-        // Use a fixed "now" to avoid flaky tests
-        let fixedNow = Date(timeIntervalSince1970: 1704067200) // Jan 1, 2024 00:00:00 UTC
-        let futureDate = fixedNow.addingTimeInterval(3 * 3600 + 21 * 60)
+        // Given - a date 3 hours and 21 minutes in the future from NOW
+        let futureDate = Date().addingTimeInterval(3 * 3600 + 21 * 60)
 
-        // When - calculate time remaining from the future date's perspective
-        // Since formatTimeRemaining uses Date(), we test the output format
+        // When
         let result = DateFormattingHelper.formatTimeRemaining(futureDate)
 
-        // Then - the result should either be a time format or "Ready" (if test runs after futureDate)
-        // For a robust test, we verify the format is correct
-        XCTAssertTrue(result == Constants.Status.ready || (result.contains("h") && result.contains("m")),
-                      "Expected 'Ready' or time format like 'Xh Ym', got: \(result)")
+        // Then - the result should be a time format like "3h 21m"
+        XCTAssertTrue(result.contains("h") && result.contains("m"),
+                      "Expected time format like 'Xh Ym', got: \(result)")
+        XCTAssertTrue(result.hasPrefix("3h"), "Expected to start with '3h', got: \(result)")
     }
 
     func testFormatTimeRemainingPast() {
@@ -111,16 +108,26 @@ final class DateFormattingHelperTests: XCTestCase {
     // MARK: - Date Display Formatting Tests
 
     func testFormatDateDisplay() {
-        // Given - a specific date
-        let date = Date()
+        // Given - a specific known date (Jan 15, 2025 at 2:30 PM UTC)
+        var components = DateComponents()
+        components.year = 2025
+        components.month = 1
+        components.day = 15
+        components.hour = 14
+        components.minute = 30
+        components.timeZone = TimeZone(identifier: "UTC")
+        let calendar = Calendar(identifier: .gregorian)
+        let date = calendar.date(from: components)!
 
         // When
         let result = DateFormattingHelper.formatDateDisplay(date)
 
-        // Then
-        // Result should contain day abbreviation and time
+        // Then - Result should contain day abbreviation and AM/PM time
         XCTAssertFalse(result.isEmpty)
-        XCTAssertTrue(result.count > 5) // e.g., "Thu 8:59 PM"
+        // Should match format "E h:mm a" (e.g., "Wed 2:30 PM" or localized equivalent)
+        XCTAssertTrue(result.count >= 8, "Expected at least 8 chars for 'E h:mm a' format, got: \(result)")
+        // Should contain a colon for time
+        XCTAssertTrue(result.contains(":"), "Expected time with colon, got: \(result)")
     }
 
     func testFormatResetDateValidDate() {

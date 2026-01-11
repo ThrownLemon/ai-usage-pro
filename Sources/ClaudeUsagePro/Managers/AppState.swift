@@ -92,11 +92,9 @@ class AppState {
     @discardableResult
     func addClaudeOAuthAccount(oauthToken: String, refreshToken: String? = nil) -> Bool {
         // Check for duplicate OAuth token
-        for session in sessions {
-            if session.account.oauthToken == oauthToken {
-                Log.warning(Log.Category.app, "Duplicate OAuth account not added")
-                return false
-            }
+        if sessions.contains(where: { $0.account.oauthToken == oauthToken }) {
+            Log.warning(Log.Category.app, "Duplicate OAuth account not added")
+            return false
         }
 
         let newAccount = ClaudeAccount(

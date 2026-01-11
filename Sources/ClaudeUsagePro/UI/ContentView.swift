@@ -417,6 +417,10 @@ struct ContentView: View {
                     }
                 }
             }
+            oauthLogin.onLoginCancel = {
+                // Clear reAuthAccountId so next login is treated as new account
+                reAuthAccountId = nil
+            }
             appState.nextRefresh = Date().addingTimeInterval(appState.refreshIntervalSeconds())
 
             // Request notification permission on first launch

@@ -13,8 +13,10 @@ class AppearanceManager: ObservableObject {
         }
     }
 
-    private var appearanceObserver: NSKeyValueObservation?
-    private var userDefaultsObserver: NSObjectProtocol?
+    /// KVO observer for system appearance changes (nonisolated for deinit access)
+    nonisolated(unsafe) private var appearanceObserver: NSKeyValueObservation?
+    /// NotificationCenter observer for UserDefaults changes (nonisolated for deinit access)
+    nonisolated(unsafe) private var userDefaultsObserver: NSObjectProtocol?
 
     init() {
         // Load initial color scheme mode from UserDefaults
@@ -34,14 +36,12 @@ class AppearanceManager: ObservableObject {
         }
 
         // Observe UserDefaults changes (from SettingsView's @AppStorage)
-        // Note: Even though queue is .main, the closure is not MainActor-isolated,
-        // so we use MainActor.assumeIsolated for safe property access
         userDefaultsObserver = NotificationCenter.default.addObserver(
             forName: UserDefaults.didChangeNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated {
+            Task { @MainActor in
                 guard let self = self else { return }
                 let newMode =
                     UserDefaults.standard.string(forKey: ThemeManager.colorSchemeModeKey)

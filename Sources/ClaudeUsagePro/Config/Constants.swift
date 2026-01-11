@@ -145,6 +145,8 @@ enum Constants {
         static let resetsInPrefix = "Resets in"
         /// Status when data is being fetched
         static let fetching = "Fetching..."
+        /// Status when data is being refreshed
+        static let refreshing = "Refreshing..."
         /// Unknown status placeholder
         static let unknown = "Unknown"
     }

@@ -41,35 +41,35 @@ final class DateFormattingHelperTests: XCTestCase {
     // MARK: - Time Remaining Tests
 
     func testFormatTimeRemainingFuture() {
-        // Given - a date 3 hours and 21 minutes in the future from NOW
-        let futureDate = Date().addingTimeInterval(3 * 3600 + 21 * 60)
+        // Given - a fixed reference date and a future date 3h 21m later
+        let referenceDate = Date(timeIntervalSince1970: 1_600_000_000)
+        let futureDate = referenceDate.addingTimeInterval(3 * 3600 + 21 * 60)
 
-        // When
-        let result = DateFormattingHelper.formatTimeRemaining(futureDate)
+        // When - use injectable reference date for deterministic testing
+        let result = DateFormattingHelper.formatTimeRemaining(futureDate, referenceDate: referenceDate)
 
-        // Then - the result should be a time format like "3h 21m"
-        XCTAssertTrue(result.contains("h") && result.contains("m"),
-                      "Expected time format like 'Xh Ym', got: \(result)")
-        XCTAssertTrue(result.hasPrefix("3h"), "Expected to start with '3h', got: \(result)")
+        // Then - the result should be exactly "3h 21m"
+        XCTAssertEqual(result, "3h 21m")
     }
 
     func testFormatTimeRemainingPast() {
-        // Given - a date in the past
-        let pastDate = Date().addingTimeInterval(-3600)
+        // Given - a fixed reference date and a date 1 hour in the past
+        let referenceDate = Date(timeIntervalSince1970: 1_600_000_000)
+        let pastDate = referenceDate.addingTimeInterval(-3600)
 
         // When
-        let result = DateFormattingHelper.formatTimeRemaining(pastDate)
+        let result = DateFormattingHelper.formatTimeRemaining(pastDate, referenceDate: referenceDate)
 
         // Then
         XCTAssertEqual(result, Constants.Status.ready)
     }
 
     func testFormatTimeRemainingNow() {
-        // Given - current time
-        let now = Date()
+        // Given - a fixed reference date equal to the target date
+        let referenceDate = Date(timeIntervalSince1970: 1_600_000_000)
 
         // When
-        let result = DateFormattingHelper.formatTimeRemaining(now)
+        let result = DateFormattingHelper.formatTimeRemaining(referenceDate, referenceDate: referenceDate)
 
         // Then
         XCTAssertEqual(result, Constants.Status.ready)

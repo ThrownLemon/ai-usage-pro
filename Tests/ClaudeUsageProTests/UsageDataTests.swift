@@ -53,10 +53,11 @@ final class UsageDataTests: XCTestCase {
 
     func testUsageDataCreation() {
         // Given/When
+        let sessionResetDisplay = "\(Constants.Status.resetsInPrefix) 2h 30m"
         let usageData = UsageData(
             sessionPercentage: 0.75,
             sessionReset: "2h 30m",
-            sessionResetDisplay: "Resets in 2h 30m",
+            sessionResetDisplay: sessionResetDisplay,
             weeklyPercentage: 0.50,
             weeklyReset: "Thu 8:00 AM",
             weeklyResetDisplay: "Thu 8:00 AM",
@@ -72,6 +73,7 @@ final class UsageDataTests: XCTestCase {
         XCTAssertEqual(usageData.weeklyPercentage, 0.50)
         XCTAssertEqual(usageData.tier, "Pro")
         XCTAssertEqual(usageData.email, "test@example.com")
+        XCTAssertEqual(usageData.sessionResetDisplay, sessionResetDisplay)
     }
 
     func testUsageDataEquality() {

@@ -216,7 +216,7 @@ struct CountdownView: View {
                     .font(.system(.caption2, design: .rounded).monospacedDigit())
                     .foregroundColor(.secondary)
             } else {
-                Text("Refreshing...")
+                Text(Constants.Status.refreshing)
                     .font(.system(.caption2, design: .rounded))
                     .foregroundColor(.secondary)
             }

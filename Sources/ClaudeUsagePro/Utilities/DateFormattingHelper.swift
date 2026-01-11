@@ -54,10 +54,12 @@ enum DateFormattingHelper {
     }
 
     /// Formats a Date into a human-readable time remaining string.
-    /// - Parameter date: The target date
+    /// - Parameters:
+    ///   - date: The target date
+    ///   - referenceDate: The reference date to calculate from (defaults to now)
     /// - Returns: Formatted string like "3h 21m" or "Ready" if time has passed
-    static func formatTimeRemaining(_ date: Date) -> String {
-        let diff = date.timeIntervalSinceNow
+    static func formatTimeRemaining(_ date: Date, referenceDate: Date = Date()) -> String {
+        let diff = date.timeIntervalSince(referenceDate)
         if diff <= 0 { return Constants.Status.ready }
 
         let hours = Int(diff) / 3600

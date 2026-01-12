@@ -1,5 +1,6 @@
 # AI Usage Pro
 
+![CI](https://github.com/ThrownLemon/ai-usage-pro/actions/workflows/swift.yml/badge.svg)
 ![macOS](https://img.shields.io/badge/platform-macOS%2014%2B-blue)
 ![Swift](https://img.shields.io/badge/Swift-5.9%2B-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)

@@ -1,0 +1,12 @@
+# Default owner for everything
+* @ThrownLemon
+
+# Swift source code
+/Sources/ @ThrownLemon
+/Tests/ @ThrownLemon
+
+# CI/CD configuration
+/.github/ @ThrownLemon
+
+# Documentation
+*.md @ThrownLemon

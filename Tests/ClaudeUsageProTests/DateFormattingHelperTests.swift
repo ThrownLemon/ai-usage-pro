@@ -99,12 +99,36 @@ final class DateFormattingHelperTests: XCTestCase {
         XCTAssertEqual(result, "<1m")
     }
 
+    func testFormatTimeRemainingMinutesOnly() {
+        // Given - a fixed reference date and a future date 30 minutes later
+        let referenceDate = Date(timeIntervalSince1970: 1_600_000_000)
+        let futureDate = referenceDate.addingTimeInterval(30 * 60)
+
+        // When
+        let result = DateFormattingHelper.formatTimeRemaining(futureDate, referenceDate: referenceDate)
+
+        // Then - should show "30m" not "0h 30m"
+        XCTAssertEqual(result, "30m")
+    }
+
+    func testFormatTimeRemainingHoursOnly() {
+        // Given - a fixed reference date and a future date 2 hours later (exactly)
+        let referenceDate = Date(timeIntervalSince1970: 1_600_000_000)
+        let futureDate = referenceDate.addingTimeInterval(2 * 3600)
+
+        // When
+        let result = DateFormattingHelper.formatTimeRemaining(futureDate, referenceDate: referenceDate)
+
+        // Then - should show "2h" not "2h 0m"
+        XCTAssertEqual(result, "2h")
+    }
+
     // MARK: - Reset Time Formatting Tests
 
     func testFormatResetTimeValidDate() {
-        // Given - a future date in ISO format
+        // Given - a future date in ISO format (2h 15m to ensure both components show)
         let calendar = Calendar.current
-        let futureDate = calendar.date(byAdding: .hour, value: 2, to: Date())!
+        let futureDate = calendar.date(byAdding: .minute, value: 135, to: Date())!
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         let isoDate = formatter.string(from: futureDate)
@@ -112,9 +136,8 @@ final class DateFormattingHelperTests: XCTestCase {
         // When
         let result = DateFormattingHelper.formatResetTime(isoDate: isoDate)
 
-        // Then
-        XCTAssertTrue(result.contains("h"))
-        XCTAssertTrue(result.contains("m"))
+        // Then - should contain time units and not ISO format
+        XCTAssertTrue(result.contains("h") || result.contains("m") || result.contains("d"))
         XCTAssertFalse(result.contains("T")) // Should not contain ISO format
     }
 

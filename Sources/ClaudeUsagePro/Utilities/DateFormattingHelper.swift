@@ -82,6 +82,13 @@ enum DateFormattingHelper {
         if hours == 0 && mins == 0 {
             return "<1m"
         }
+        // Omit zero components for cleaner display (e.g., "30m" instead of "0h 30m")
+        if hours == 0 {
+            return "\(mins)m"
+        }
+        if mins == 0 {
+            return "\(hours)h"
+        }
         return "\(hours)h \(mins)m"
     }
 

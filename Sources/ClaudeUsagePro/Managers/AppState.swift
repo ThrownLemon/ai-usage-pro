@@ -96,7 +96,7 @@ class AppState {
     @discardableResult
     func addClaudeOAuthAccount(oauthToken: String, refreshToken: String? = nil) -> Bool {
         // Check for duplicate OAuth token
-        if sessions.contains(where: { $0.account.oauthToken == oauthToken }) {
+        for session in sessions where session.account.oauthToken == oauthToken {
             Log.warning(Log.Category.app, "Duplicate OAuth account not added")
             return false
         }
@@ -324,7 +324,7 @@ class AppState {
         } catch {
             Log.error(
                 Log.Category.app,
-                "Failed to decode saved accounts: \(error.localizedDescription). Data size: \(data.count) bytes"
+                "Failed to decode saved accounts from '\(accountsKey)': \(error.localizedDescription). Data size: \(data.count) bytes"
             )
         }
     }

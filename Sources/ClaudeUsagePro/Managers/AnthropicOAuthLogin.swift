@@ -34,6 +34,12 @@ class AnthropicOAuthLogin: ObservableObject {
     /// Called when OAuth login succeeds with the access token and optional refresh token
     var onLoginSuccess: ((_ accessToken: String, _ refreshToken: String?) -> Void)?
 
+    /// Called when OAuth login is cancelled by the user
+    var onLoginCancel: (() -> Void)?
+
+    /// Called when OAuth login fails with an error
+    var onLoginError: ((_ error: String) -> Void)?
+
     // MARK: - Public API
 
     /// Starts the OAuth login flow.
@@ -99,6 +105,7 @@ class AnthropicOAuthLogin: ObservableObject {
         errorMessage = nil
         clearPKCEState()
         Log.debug(category, "OAuth login cancelled")
+        onLoginCancel?()
     }
 
     // MARK: - PKCE Implementation
@@ -171,8 +178,10 @@ class AnthropicOAuthLogin: ObservableObject {
                 await MainActor.run {
                     self.isAuthenticating = false
                     self.clearPKCEState()
+                    let errorMsg = "Failed to complete login: \(error.localizedDescription)"
                     Log.error(self.category, "Token exchange failed: \(error.localizedDescription)")
-                    self.errorMessage = "Failed to complete login: \(error.localizedDescription)"
+                    self.errorMessage = errorMsg
+                    self.onLoginError?(errorMsg)
                 }
             }
         }

@@ -427,6 +427,8 @@ struct ContentView: View {
                 // Clear reAuthAccountId so next login is treated as new account
                 reAuthAccountId = nil
             }
+            // Error parameter intentionally ignored - AnthropicOAuthLogin already logs
+            // the error and updates errorMessage for the UI; we only need to clear state
             oauthLogin.onLoginError = { _ in
                 // Clear reAuthAccountId on error so next login is treated as new account
                 reAuthAccountId = nil

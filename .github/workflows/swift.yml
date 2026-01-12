@@ -54,4 +54,4 @@ jobs:
         run: swiftlint lint --reporter github-actions-logging
 
       - name: Run SwiftFormat
-        run: swiftformat --lint Sources Tests
+        run: swiftformat Sources Tests --lint

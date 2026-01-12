@@ -60,7 +60,8 @@ struct QuitButton: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(
                             isHovering ? Color.red.opacity(0.2) : Color.secondary.opacity(0.1),
-                            lineWidth: 1)
+                            lineWidth: 1
+                        )
                 )
                 .scaleEffect(isHovering ? 1.05 : 1.0)
                 .animation(.easeInOut(duration: 0.1), value: isHovering)
@@ -110,7 +111,8 @@ struct AccountTypeButton: View {
                         RoundedRectangle(cornerRadius: 10)
                             .stroke(
                                 isHovering ? color.opacity(0.3) : Color.secondary.opacity(0.1),
-                                lineWidth: 1)
+                                lineWidth: 1
+                            )
                     )
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -135,7 +137,8 @@ struct AccountTypeButton: View {
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(
                         isHovering ? color.opacity(0.3) : theme.cardBorder(for: colorScheme),
-                        lineWidth: 1)
+                        lineWidth: 1
+                    )
             )
             .themeOverlay(theme)
             .scaleEffect(isHovering ? 1.015 : 1.0)

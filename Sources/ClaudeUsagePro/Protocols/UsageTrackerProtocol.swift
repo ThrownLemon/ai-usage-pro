@@ -34,12 +34,12 @@ enum TrackerFactory {
     @MainActor
     static func create(for config: TrackerConfiguration) -> any UsageTracker {
         switch config {
-        case .claude(let cookies):
-            return ClaudeTrackerAdapter(cookies: cookies)
+        case let .claude(cookies):
+            ClaudeTrackerAdapter(cookies: cookies)
         case .cursor:
-            return CursorTrackerAdapter()
-        case .glm(let apiToken):
-            return GLMTrackerAdapter(apiToken: apiToken)
+            CursorTrackerAdapter()
+        case let .glm(apiToken):
+            GLMTrackerAdapter(apiToken: apiToken)
         }
     }
 }
@@ -127,9 +127,9 @@ enum TrackerAdapterError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .fetchCancelled:
-            return "Operation was cancelled"
+            "Operation was cancelled"
         case .timeout:
-            return "Operation timed out"
+            "Operation timed out"
         }
     }
 }
@@ -154,8 +154,8 @@ final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Send
     private let fetchTimeout: TimeInterval = 60.0
 
     init(cookies: [[String: String]]) {
-        self.cookieProps = cookies
-        self.service = TrackerService()
+        cookieProps = cookies
+        service = TrackerService()
     }
 
     /// Converts stored cookie properties back to HTTPCookie objects
@@ -166,21 +166,21 @@ final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Send
     nonisolated func fetchUsage() async throws -> UsageData {
         try await withCheckedThrowingContinuation { continuation in
             Task { @MainActor [weak self] in
-                guard let self = self else {
+                guard let self else {
                     continuation.resume(throwing: TrackerAdapterError.fetchCancelled)
                     return
                 }
 
                 // Cancel any pending fetch continuation and timeout before starting new one
-                self.fetchTimeoutWorkItem?.cancel()
-                if let pending = self.pendingFetchContinuation {
+                fetchTimeoutWorkItem?.cancel()
+                if let pending = pendingFetchContinuation {
                     pending.resume(throwing: TrackerAdapterError.fetchCancelled)
                 }
-                self.pendingFetchContinuation = continuation
+                pendingFetchContinuation = continuation
 
                 // Set up timeout to prevent continuation leak
                 let timeoutWorkItem = DispatchWorkItem { [weak self] in
-                    guard let self = self else { return }
+                    guard let self else { return }
                     Task { @MainActor in
                         if let pending = self.pendingFetchContinuation {
                             pending.resume(throwing: TrackerAdapterError.timeout)
@@ -188,28 +188,28 @@ final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Send
                         }
                     }
                 }
-                self.fetchTimeoutWorkItem = timeoutWorkItem
-                DispatchQueue.main.asyncAfter(deadline: .now() + self.fetchTimeout, execute: timeoutWorkItem)
+                fetchTimeoutWorkItem = timeoutWorkItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + fetchTimeout, execute: timeoutWorkItem)
 
-                self.service.onUpdate = { [weak self] usageData in
-                    guard let self = self else { return }
-                    self.fetchTimeoutWorkItem?.cancel()
-                    if let pending = self.pendingFetchContinuation {
+                service.onUpdate = { [weak self] usageData in
+                    guard let self else { return }
+                    fetchTimeoutWorkItem?.cancel()
+                    if let pending = pendingFetchContinuation {
                         var data = usageData
                         data.sessionResetDisplay = UsageData.formatSessionResetDisplay(usageData.sessionReset)
                         pending.resume(returning: data)
-                        self.pendingFetchContinuation = nil
+                        pendingFetchContinuation = nil
                     }
                 }
-                self.service.onError = { [weak self] error in
-                    guard let self = self else { return }
-                    self.fetchTimeoutWorkItem?.cancel()
-                    if let pending = self.pendingFetchContinuation {
+                service.onError = { [weak self] error in
+                    guard let self else { return }
+                    fetchTimeoutWorkItem?.cancel()
+                    if let pending = pendingFetchContinuation {
                         pending.resume(throwing: error)
-                        self.pendingFetchContinuation = nil
+                        pendingFetchContinuation = nil
                     }
                 }
-                self.service.fetchUsage(cookies: self.cookies)
+                service.fetchUsage(cookies: cookies)
             }
         }
     }
@@ -217,21 +217,21 @@ final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Send
     nonisolated func pingSession() async throws -> Bool {
         try await withCheckedThrowingContinuation { continuation in
             Task { @MainActor [weak self] in
-                guard let self = self else {
+                guard let self else {
                     continuation.resume(throwing: TrackerAdapterError.fetchCancelled)
                     return
                 }
 
                 // Cancel any pending ping continuation and timeout before starting new one
-                self.pingTimeoutWorkItem?.cancel()
-                if let pending = self.pendingPingContinuation {
+                pingTimeoutWorkItem?.cancel()
+                if let pending = pendingPingContinuation {
                     pending.resume(throwing: TrackerAdapterError.fetchCancelled)
                 }
-                self.pendingPingContinuation = continuation
+                pendingPingContinuation = continuation
 
                 // Set up timeout to prevent continuation leak
                 let timeoutWorkItem = DispatchWorkItem { [weak self] in
-                    guard let self = self else { return }
+                    guard let self else { return }
                     Task { @MainActor in
                         if let pending = self.pendingPingContinuation {
                             pending.resume(throwing: TrackerAdapterError.timeout)
@@ -239,18 +239,18 @@ final class ClaudeTrackerAdapter: UsageTracker, SessionPingable, @unchecked Send
                         }
                     }
                 }
-                self.pingTimeoutWorkItem = timeoutWorkItem
-                DispatchQueue.main.asyncAfter(deadline: .now() + self.fetchTimeout, execute: timeoutWorkItem)
+                pingTimeoutWorkItem = timeoutWorkItem
+                DispatchQueue.main.asyncAfter(deadline: .now() + fetchTimeout, execute: timeoutWorkItem)
 
-                self.service.onPingComplete = { [weak self] success in
-                    guard let self = self else { return }
-                    self.pingTimeoutWorkItem?.cancel()
-                    if let pending = self.pendingPingContinuation {
+                service.onPingComplete = { [weak self] success in
+                    guard let self else { return }
+                    pingTimeoutWorkItem?.cancel()
+                    if let pending = pendingPingContinuation {
                         pending.resume(returning: success)
-                        self.pendingPingContinuation = nil
+                        pendingPingContinuation = nil
                     }
                 }
-                self.service.pingSession()
+                service.pingSession()
             }
         }
     }

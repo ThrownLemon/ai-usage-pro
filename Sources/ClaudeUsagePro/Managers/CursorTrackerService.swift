@@ -17,15 +17,15 @@ enum CursorTrackerError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .authNotFound:
-            return "Cursor authentication token not found in the local database."
-        case .fetchFailed(let error):
-            return "Failed to fetch usage summary: \(error.localizedDescription)"
-        case .badResponse(let statusCode):
-            return "Received an invalid server response (Status Code: \(statusCode))."
-        case .invalidJSONResponse(let error):
-            return "Failed to parse the JSON response: \(error.localizedDescription)"
+            "Cursor authentication token not found in the local database."
+        case let .fetchFailed(error):
+            "Failed to fetch usage summary: \(error.localizedDescription)"
+        case let .badResponse(statusCode):
+            "Received an invalid server response (Status Code: \(statusCode))."
+        case let .invalidJSONResponse(error):
+            "Failed to parse the JSON response: \(error.localizedDescription)"
         case .invalidAPIURL:
-            return "The API endpoint URL is invalid."
+            "The API endpoint URL is invalid."
         }
     }
 }
@@ -79,10 +79,11 @@ class CursorTrackerService {
     /// Checks if Cursor is installed on this machine.
     /// - Returns: True if the Cursor state database exists
     func isInstalled() -> Bool {
-        let path = NSString(string: "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb").expandingTildeInPath
+        let path = NSString(string: "~/Library/Application Support/Cursor/User/globalStorage/state.vscdb")
+            .expandingTildeInPath
         return FileManager.default.fileExists(atPath: path)
     }
-    
+
     /// Fetches current usage statistics from the Cursor API.
     /// - Returns: Usage information including requests used and limits
     /// - Throws: CursorTrackerError if authentication or fetch fails
@@ -90,30 +91,30 @@ class CursorTrackerService {
         guard let auth = readAuthFromStateDB(), let token = auth.accessToken else {
             throw CursorTrackerError.authNotFound
         }
-        
+
         guard let url = URL(string: "\(cursorAPIBase)/auth/usage-summary") else {
             throw CursorTrackerError.invalidAPIURL
         }
-        
+
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Accept")
-        
+
         let (data, response) = try await URLSession.shared.data(for: request)
-        
+
         guard let httpResponse = response as? HTTPURLResponse else {
             throw CursorTrackerError.badResponse(statusCode: 0)
         }
-        
+
         guard httpResponse.statusCode == 200 else {
             throw CursorTrackerError.badResponse(statusCode: httpResponse.statusCode)
         }
-        
+
         do {
             let apiResponse = try JSONDecoder().decode(CursorAPIResponse.self, from: data)
             let plan = apiResponse.individualUsage.plan
-            
+
             return CursorUsageInfo(
                 email: auth.email,
                 planUsed: plan.used,
@@ -125,33 +126,34 @@ class CursorTrackerService {
             throw CursorTrackerError.invalidJSONResponse(error)
         }
     }
-    
+
     private func readAuthFromStateDB() -> CursorAuthData? {
         let path = NSString(string: stateDBPath).expandingTildeInPath
         guard FileManager.default.fileExists(atPath: path) else { return nil }
-        
+
         let uri = "file://\(path)?mode=ro&immutable=1"
         var db: OpaquePointer?
-        
+
         guard sqlite3_open_v2(uri, &db, SQLITE_OPEN_READONLY | SQLITE_OPEN_URI, nil) == SQLITE_OK else {
             return nil
         }
         defer { sqlite3_close(db) }
-        
+
         var accessToken: String?
         var email: String?
         var membershipType: String?
-        
+
         let query = "SELECT key, value FROM ItemTable WHERE key LIKE 'cursorAuth/%'"
         var stmt: OpaquePointer?
-        
+
         if sqlite3_prepare_v2(db, query, -1, &stmt, nil) == SQLITE_OK {
             while sqlite3_step(stmt) == SQLITE_ROW {
                 if let keyPtr = sqlite3_column_text(stmt, 0),
-                   let valuePtr = sqlite3_column_text(stmt, 1) {
+                   let valuePtr = sqlite3_column_text(stmt, 1)
+                {
                     let key = String(cString: keyPtr)
                     let value = String(cString: valuePtr)
-                    
+
                     switch key {
                     case "cursorAuth/accessToken": accessToken = value
                     case "cursorAuth/cachedEmail": email = value
@@ -162,7 +164,7 @@ class CursorTrackerService {
             }
             sqlite3_finalize(stmt)
         }
-        
+
         return CursorAuthData(accessToken: accessToken, email: email, membershipType: membershipType)
     }
 }

@@ -22,11 +22,11 @@ enum MenuBarIconState {
     /// The SF Symbol name for this state
     var iconName: String {
         switch self {
-        case .noAccounts: return "xmark.circle"
-        case .loading: return "circle.dotted"
-        case .noData: return "questionmark.circle"
-        case .ready: return "play.circle.fill"
-        case .lowUsage, .mediumUsage, .highUsage: return "checkmark.circle"
+        case .noAccounts: "xmark.circle"
+        case .loading: "circle.dotted"
+        case .noData: "questionmark.circle"
+        case .ready: "play.circle.fill"
+        case .lowUsage, .mediumUsage, .highUsage: "checkmark.circle"
         }
     }
 }
@@ -39,7 +39,7 @@ class AppState {
     /// All active account monitoring sessions
     var sessions: [AccountSession] = []
     /// When the next automatic refresh will occur
-    var nextRefresh: Date = Date()
+    var nextRefresh: Date = .init()
     /// Trigger for refreshing the menu bar icon
     var iconRefreshTrigger = UUID()
 
@@ -78,7 +78,10 @@ class AppState {
         )
         // Save cookies to Keychain
         if !newAccount.saveCredentialsToKeychain() {
-            Log.warning(Log.Category.app, "Failed to save credentials to Keychain for new account - credentials may not persist")
+            Log.warning(
+                Log.Category.app,
+                "Failed to save credentials to Keychain for new account - credentials may not persist"
+            )
         }
 
         let session = AccountSession(account: newAccount)
@@ -141,7 +144,10 @@ class AppState {
 
         // Save new credentials to Keychain
         if !sessions[sessionIndex].account.saveCredentialsToKeychain() {
-            Log.warning(Log.Category.app, "Failed to save re-auth credentials to Keychain - credentials may not persist")
+            Log.warning(
+                Log.Category.app,
+                "Failed to save re-auth credentials to Keychain - credentials may not persist"
+            )
         }
 
         // Save accounts and trigger a fetch
@@ -286,7 +292,7 @@ class AppState {
     }
 
     private func saveAccounts() {
-        let accounts = sessions.map { $0.account }
+        let accounts = sessions.map(\.account)
         if let data = try? JSONEncoder().encode(accounts) {
             defaults.set(data, forKey: accountsKey)
         }
@@ -314,9 +320,9 @@ class AppState {
                 )
             }
 
-            self.sessions = accounts.map { AccountSession(account: $0) }
+            sessions = accounts.map { AccountSession(account: $0) }
 
-            for session in self.sessions {
+            for session in sessions {
                 subscribeToSessionChanges(session)
                 // Note: startMonitoring() is called separately via startMonitoringAll()
                 // to avoid side effects during init
@@ -361,13 +367,16 @@ class AppState {
                     if let cookies = legacy.cookieProps, !cookies.isEmpty {
                         do {
                             try KeychainService.save(
-                                cookies, forKey: KeychainService.cookiesKey(for: legacy.id))
+                                cookies, forKey: KeychainService.cookiesKey(for: legacy.id)
+                            )
                             Log.info(
-                                Log.Category.keychain, "Migrated cookies for account \(legacy.id)")
+                                Log.Category.keychain, "Migrated cookies for account \(legacy.id)"
+                            )
                         } catch {
                             Log.error(
                                 Log.Category.keychain,
-                                "Failed to migrate cookies for \(legacy.id): \(error)")
+                                "Failed to migrate cookies for \(legacy.id): \(error)"
+                            )
                             allMigrationsSucceeded = false
                         }
                     }
@@ -376,14 +385,16 @@ class AppState {
                     if let token = legacy.apiToken {
                         do {
                             try KeychainService.save(
-                                token, forKey: KeychainService.apiTokenKey(for: legacy.id))
+                                token, forKey: KeychainService.apiTokenKey(for: legacy.id)
+                            )
                             Log.info(
                                 Log.Category.keychain, "Migrated API token for account \(legacy.id)"
                             )
                         } catch {
                             Log.error(
                                 Log.Category.keychain,
-                                "Failed to migrate API token for \(legacy.id): \(error)")
+                                "Failed to migrate API token for \(legacy.id): \(error)"
+                            )
                             allMigrationsSucceeded = false
                         }
                     }
@@ -394,7 +405,7 @@ class AppState {
                 Log.error(
                     Log.Category.keychain,
                     "Failed to decode legacy accounts from '\(accountsKey)': \(error.localizedDescription). " +
-                    "Data size: \(dataSize) bytes"
+                        "Data size: \(dataSize) bytes"
                 )
                 allMigrationsSucceeded = false
             }
@@ -414,23 +425,23 @@ class AppState {
     var menuBarIconState: MenuBarIconState {
         guard !sessions.isEmpty else { return .noAccounts }
 
-        if sessions.contains(where: { $0.isFetching }) {
+        if sessions.contains(where: \.isFetching) {
             return .loading
         }
 
-        let accountsWithData = sessions.compactMap { $0.account.usageData }
+        let accountsWithData = sessions.compactMap(\.account.usageData)
 
         if accountsWithData.isEmpty {
             return .noData
         }
 
-        let maxSessionPercentage = accountsWithData.map { $0.sessionPercentage }.max() ?? 0
+        let maxSessionPercentage = accountsWithData.map(\.sessionPercentage).max() ?? 0
 
         let hasReadyState = accountsWithData.contains {
             $0.sessionPercentage == 0 && $0.sessionReset == Constants.Status.ready
         }
 
-        if hasReadyState && maxSessionPercentage == 0 {
+        if hasReadyState, maxSessionPercentage == 0 {
             return .ready
         } else if maxSessionPercentage < 0.5 {
             return .lowUsage

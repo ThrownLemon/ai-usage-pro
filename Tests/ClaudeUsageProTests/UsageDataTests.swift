@@ -1,8 +1,7 @@
-import XCTest
 @testable import ClaudeUsagePro
+import XCTest
 
 final class UsageDataTests: XCTestCase {
-
     // MARK: - Session Reset Display Formatting Tests
 
     func testFormatSessionResetDisplayReady() {

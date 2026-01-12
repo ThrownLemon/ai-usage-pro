@@ -18,7 +18,6 @@ import os
 ///   - fault: Red (for critical failures)
 ///
 enum Log {
-
     // MARK: - Configuration
 
     private static let subsystem = Bundle.main.bundleIdentifier ?? "com.claudeusagepro"
@@ -113,7 +112,7 @@ enum Log {
     /// Print to terminal (stderr) when running from command line
     private static func printToTerminal(_ message: String) {
         #if DEBUG
-        fputs("\(message)\n", stderr)
+            fputs("\(message)\n", stderr)
         #endif
     }
 
@@ -214,8 +213,14 @@ enum Log {
             let monthlyLimit = usageData.glmMonthlyLimit ?? 0
             output += """
 
-            ║ ⏱️ Session:  \(String(format: "%.0f", sessionUsed)) / \(String(format: "%.0f", sessionLimit)) tokens (\(sessionPct)%)
-            ║ 📅 Monthly:  \(String(format: "%.0f", monthlyUsed)) / \(String(format: "%.0f", monthlyLimit)) (\(weeklyPct)%)
+            ║ ⏱️ Session:  \(String(format: "%.0f", sessionUsed)) / \(String(
+                format: "%.0f",
+                sessionLimit
+            )) tokens (\(sessionPct)%)
+            ║ 📅 Monthly:  \(String(format: "%.0f", monthlyUsed)) / \(String(
+                format: "%.0f",
+                monthlyLimit
+            )) (\(weeklyPct)%)
             ║ 👤 Plan:     GLM Coding Plan
             """
         }

@@ -2,7 +2,6 @@ import Foundation
 
 /// Centralized constants for the application
 enum Constants {
-
     // MARK: - URLs
 
     /// URL constants for API endpoints

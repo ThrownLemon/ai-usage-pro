@@ -1,8 +1,7 @@
-import XCTest
 @testable import ClaudeUsagePro
+import XCTest
 
 final class DateFormattingHelperTests: XCTestCase {
-
     // MARK: - ISO8601 Parsing Tests
 
     func testParseISO8601WithFractionalSeconds() {

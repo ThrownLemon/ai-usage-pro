@@ -1,7 +1,7 @@
-import Foundation
-import UserNotifications
 import Combine
+import Foundation
 import os
+import UserNotifications
 
 /// Manages macOS user notifications for usage alerts and session ready events.
 /// Handles permission requests, notification delivery, and rate limiting.
@@ -70,17 +70,17 @@ class NotificationManager: NSObject, ObservableObject {
         var identifier: String {
             switch self {
             case .sessionThreshold75:
-                return "session.threshold.75"
+                "session.threshold.75"
             case .sessionThreshold90:
-                return "session.threshold.90"
+                "session.threshold.90"
             case .weeklyThreshold75:
-                return "weekly.threshold.75"
+                "weekly.threshold.75"
             case .weeklyThreshold90:
-                return "weekly.threshold.90"
+                "weekly.threshold.90"
             case .sessionReady:
-                return "session.ready"
+                "session.ready"
             case .needsReauthentication:
-                return "account.needs.reauth"
+                "account.needs.reauth"
             }
         }
     }
@@ -146,7 +146,7 @@ class NotificationManager: NSObject, ObservableObject {
     ///   - type: The notification type
     /// - Returns: A unique key string in format "accountId:type.identifier"
     func cooldownKey(accountId: UUID, type: NotificationType) -> String {
-        return "\(accountId.uuidString):\(type.identifier)"
+        "\(accountId.uuidString):\(type.identifier)"
     }
 
     /// Check if cooldown period has passed since last notification of this type for this account
@@ -194,7 +194,7 @@ class NotificationManager: NSObject, ObservableObject {
 
         center.requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] granted, error in
             DispatchQueue.main.async {
-                if let error = error {
+                if let error {
                     self?.onError?(error)
                     return
                 }
@@ -247,7 +247,7 @@ class NotificationManager: NSObject, ObservableObject {
 
         // Schedule the notification
         center.add(request) { [weak self] error in
-            if let error = error {
+            if let error {
                 DispatchQueue.main.async {
                     self?.onError?(error)
                 }
@@ -270,7 +270,11 @@ class NotificationManager: NSObject, ObservableObject {
 
         let content = buildNotificationContent(type: type, accountName: accountName, thresholdPercent: thresholdPercent)
         // Use cooldownKey as identifier to ensure uniqueness per account per type
-        sendNotification(title: content.title, body: content.body, identifier: cooldownKey(accountId: accountId, type: type))
+        sendNotification(
+            title: content.title,
+            body: content.body,
+            identifier: cooldownKey(accountId: accountId, type: type)
+        )
 
         // Record that notification was sent for rate limiting
         recordNotificationSent(accountId: accountId, type: type)
@@ -305,8 +309,8 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
     /// Handles notification presentation when the app is in the foreground.
     /// Shows notifications as banners with sound even when the app is active.
     nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification,
+        _: UNUserNotificationCenter,
+        willPresent _: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
     ) {
         completionHandler([.banner, .sound])
@@ -314,8 +318,8 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
 
     /// Handles notification interaction when the user taps on it.
     nonisolated func userNotificationCenter(
-        _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse,
+        _: UNUserNotificationCenter,
+        didReceive _: UNNotificationResponse,
         withCompletionHandler completionHandler: @escaping () -> Void
     ) {
         completionHandler()

@@ -19,17 +19,17 @@ enum GLMTrackerError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .tokenNotFound:
-            return "GLM API token not found."
-        case .fetchFailed(let error):
-            return "Failed to fetch usage: \(error.localizedDescription)"
+            "GLM API token not found."
+        case let .fetchFailed(error):
+            "Failed to fetch usage: \(error.localizedDescription)"
         case .nonHTTPResponse:
-            return "Received a non-HTTP response from the server."
-        case .badResponse(let statusCode):
-            return "Received an invalid server response (Status Code: \(statusCode))."
-        case .invalidJSONResponse(let error):
-            return "Failed to parse the JSON response: \(error.localizedDescription)"
+            "Received a non-HTTP response from the server."
+        case let .badResponse(statusCode):
+            "Received an invalid server response (Status Code: \(statusCode))."
+        case let .invalidJSONResponse(error):
+            "Failed to parse the JSON response: \(error.localizedDescription)"
         case .invalidAPIURL:
-            return "The API endpoint URL is invalid."
+            "The API endpoint URL is invalid."
         }
     }
 }
@@ -60,7 +60,6 @@ private struct GLMUsageDetail: Codable {
     let total: Double?
 }
 
-
 /// Usage information for a GLM Coding Plan account.
 struct GLMUsageInfo {
     /// Usage percentage for the 5-hour rolling window
@@ -82,7 +81,7 @@ struct GLMUsageInfo {
         let hours = Int(sessionRemainingHours)
         let minutes = Int((sessionRemainingHours - Double(hours)) * 60)
 
-        if hours > 0 && minutes > 0 {
+        if hours > 0, minutes > 0 {
             return String(format: "Resets in %dh %dm", hours, minutes)
         } else if hours > 0 {
             return String(format: "Resets in %dh", hours)
@@ -94,8 +93,12 @@ struct GLMUsageInfo {
     }
 
     /// Format weekly/monthly reset display showing usage vs limit
-    static func formatMonthlyResetDisplay(monthlyUsed: Double, monthlyLimit: Double, monthlyPercentage: Double) -> String {
-        return monthlyLimit > 0
+    static func formatMonthlyResetDisplay(
+        monthlyUsed: Double,
+        monthlyLimit: Double,
+        monthlyPercentage: Double
+    ) -> String {
+        monthlyLimit > 0
             ? String(format: "%.0f / %.0f", monthlyUsed, monthlyLimit)
             : String(format: "%.1f%%", monthlyPercentage * 100)
     }
@@ -112,8 +115,10 @@ final class GLMTrackerService: @unchecked Sendable {
     private let quotaLimitURL: String
 
     /// Build endpoint URLs for a given base domain
-    private static func buildEndpoints(fromDomain domain: String) -> (base: String, model: String, tool: String, quota: String) {
-        return (
+    private static func buildEndpoints(fromDomain domain: String)
+        -> (base: String, model: String, tool: String, quota: String)
+    {
+        (
             base: "\(domain)/api/monitor/usage",
             model: "\(domain)/api/monitor/usage/model-usage",
             tool: "\(domain)/api/monitor/usage/tool-usage",
@@ -133,13 +138,12 @@ final class GLMTrackerService: @unchecked Sendable {
         let anthropicBaseURL = ProcessInfo.processInfo.environment["ANTHROPIC_BASE_URL"] ?? ""
         let defaultDomain = "https://open.bigmodel.cn"
 
-        let domain: String
-        if anthropicBaseURL.contains("api.z.ai") {
-            domain = Self.extractBaseDomain(from: anthropicBaseURL) ?? "https://api.z.ai"
+        let domain: String = if anthropicBaseURL.contains("api.z.ai") {
+            Self.extractBaseDomain(from: anthropicBaseURL) ?? "https://api.z.ai"
         } else if anthropicBaseURL.contains("open.bigmodel.cn") || anthropicBaseURL.contains("dev.bigmodel.cn") {
-            domain = Self.extractBaseDomain(from: anthropicBaseURL) ?? defaultDomain
+            Self.extractBaseDomain(from: anthropicBaseURL) ?? defaultDomain
         } else {
-            domain = defaultDomain
+            defaultDomain
         }
 
         let endpoints = Self.buildEndpoints(fromDomain: domain)
@@ -165,7 +169,8 @@ final class GLMTrackerService: @unchecked Sendable {
 
         if let jsonObject = try? JSONSerialization.jsonObject(with: data),
            let prettyData = try? JSONSerialization.data(withJSONObject: jsonObject, options: .prettyPrinted),
-           let prettyString = String(data: prettyData, encoding: .utf8) {
+           let prettyString = String(data: prettyData, encoding: .utf8)
+        {
             Log.debug(category, "Raw API Response:\n\(prettyString)")
         }
 
@@ -183,7 +188,11 @@ final class GLMTrackerService: @unchecked Sendable {
             let apiResponse = try JSONDecoder().decode(GLMUsageResponse.self, from: data)
 
             guard let limits = apiResponse.data?.limits else {
-                throw GLMTrackerError.invalidJSONResponse(NSError(domain: "GLMTracker", code: -1, userInfo: [NSLocalizedDescriptionKey: "No limits data in response"]))
+                throw GLMTrackerError.invalidJSONResponse(NSError(
+                    domain: "GLMTracker",
+                    code: -1,
+                    userInfo: [NSLocalizedDescriptionKey: "No limits data in response"]
+                ))
             }
 
             var sessionPercentage: Double = 0
@@ -202,7 +211,8 @@ final class GLMTrackerService: @unchecked Sendable {
                         sessionUsed = current
                         sessionLimit = total
                     } else if let details = limit.usageDetails, !details.isEmpty,
-                          let current = details.first?.currentValue, let total = details.first?.total {
+                              let current = details.first?.currentValue, let total = details.first?.total
+                    {
                         sessionUsed = current
                         sessionLimit = total
                     }
@@ -220,22 +230,26 @@ final class GLMTrackerService: @unchecked Sendable {
                         // Fallback: if we only have usage without total, estimate limit from percentage
                         monthlyUsed = usage
                         // Safety: require minimum 1% to avoid division by very small values
-                        let minPercentage = 1.0  // 1% minimum threshold
-                        let maxMonthlyLimit = 1_000_000_000.0  // 1 billion cap for sanity
+                        let minPercentage = 1.0 // 1% minimum threshold
+                        let maxMonthlyLimit = 1_000_000_000.0 // 1 billion cap for sanity
                         if monthlyPercentage >= minPercentage {
                             let calculatedLimit = usage / (monthlyPercentage / 100.0)
                             // Validate the result is finite and reasonable
-                            if calculatedLimit.isFinite && calculatedLimit <= maxMonthlyLimit {
+                            if calculatedLimit.isFinite, calculatedLimit <= maxMonthlyLimit {
                                 monthlyLimit = calculatedLimit
                             } else {
-                                Log.warning(category, "Calculated monthlyLimit (\(calculatedLimit)) is invalid, using 0")
+                                Log.warning(
+                                    category,
+                                    "Calculated monthlyLimit (\(calculatedLimit)) is invalid, using 0"
+                                )
                                 monthlyLimit = 0
                             }
                         } else {
                             monthlyLimit = 0
                         }
                     } else if let details = limit.usageDetails, !details.isEmpty,
-                          let current = details.first?.currentValue, let total = details.first?.total {
+                              let current = details.first?.currentValue, let total = details.first?.total
+                    {
                         monthlyUsed = current
                         monthlyLimit = total
                     }
@@ -244,10 +258,13 @@ final class GLMTrackerService: @unchecked Sendable {
                 }
             }
 
-            Log.info(category, "Parsed Info - Session: \(sessionUsed)/\(sessionLimit) (\(sessionPercentage)%), Monthly: \(monthlyUsed)/\(monthlyLimit) (\(monthlyPercentage)%)")
+            Log.info(
+                category,
+                "Parsed Info - Session: \(sessionUsed)/\(sessionLimit) (\(sessionPercentage)%), Monthly: \(monthlyUsed)/\(monthlyLimit) (\(monthlyPercentage)%)"
+            )
 
             return GLMUsageInfo(
-                sessionPercentage: sessionPercentage / 100.0,  // Convert to 0-1 range
+                sessionPercentage: sessionPercentage / 100.0, // Convert to 0-1 range
                 monthlyPercentage: monthlyPercentage / 100.0,
                 sessionUsed: sessionUsed,
                 sessionLimit: sessionLimit,
@@ -281,7 +298,12 @@ final class GLMTrackerService: @unchecked Sendable {
     ///   - endTime: End of the time range
     /// - Returns: Raw response data
     /// - Throws: GLMTrackerError on failure
-    private func fetchUsageData(endpoint: String, apiToken: String, startTime: Date, endTime: Date) async throws -> Data {
+    private func fetchUsageData(
+        endpoint: String,
+        apiToken: String,
+        startTime: Date,
+        endTime: Date
+    ) async throws -> Data {
         let dateFormatter = ISO8601DateFormatter()
         dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
 
@@ -294,7 +316,7 @@ final class GLMTrackerService: @unchecked Sendable {
 
         urlComponents.queryItems = [
             URLQueryItem(name: "startTime", value: startTimeStr),
-            URLQueryItem(name: "endTime", value: endTimeStr)
+            URLQueryItem(name: "endTime", value: endTimeStr),
         ]
 
         guard let url = urlComponents.url else {

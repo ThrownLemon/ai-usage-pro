@@ -22,27 +22,27 @@ enum AppTheme: String, CaseIterable, Codable {
     var description: String {
         switch self {
         case .standard:
-            return "Default dark theme"
+            "Default dark theme"
         case .minimal:
-            return "Clean, simple design"
+            "Clean, simple design"
         case .unified:
-            return "Consistent circular gauges"
+            "Consistent circular gauges"
         case .premium:
-            return "Glow effects & gradients"
+            "Glow effects & gradients"
         case .nature:
-            return "Organic wood & forest textures"
+            "Organic wood & forest textures"
         case .vibrant:
-            return "Neon gradients & glow effects"
+            "Neon gradients & glow effects"
         case .ocean:
-            return "Deep blue & aquamarine"
+            "Deep blue & aquamarine"
         case .sunset:
-            return "Warm purple to orange gradients"
+            "Warm purple to orange gradients"
         case .midnight:
-            return "Dark cosmic with neon accents"
+            "Dark cosmic with neon accents"
         case .roseGold:
-            return "Elegant pink & gold luxury"
+            "Elegant pink & gold luxury"
         case .terminal:
-            return "Retro hacker CRT style"
+            "Retro hacker CRT style"
         }
     }
 }
@@ -60,11 +60,11 @@ enum ColorSchemeMode: String, CaseIterable, Codable {
     var icon: String {
         switch self {
         case .system:
-            return "circle.lefthalf.filled"
+            "circle.lefthalf.filled"
         case .dark:
-            return "moon.fill"
+            "moon.fill"
         case .light:
-            return "sun.max.fill"
+            "sun.max.fill"
         }
     }
 
@@ -72,11 +72,11 @@ enum ColorSchemeMode: String, CaseIterable, Codable {
     var colorScheme: ColorScheme? {
         switch self {
         case .system:
-            return nil
+            nil
         case .dark:
-            return .dark
+            .dark
         case .light:
-            return .light
+            .light
         }
     }
 
@@ -84,11 +84,11 @@ enum ColorSchemeMode: String, CaseIterable, Codable {
     func effectiveColorScheme(systemScheme: ColorScheme) -> ColorScheme {
         switch self {
         case .system:
-            return systemScheme
+            systemScheme
         case .dark:
-            return .dark
+            .dark
         case .light:
-            return .light
+            .light
         }
     }
 }
@@ -122,10 +122,10 @@ enum ThemeFontDesign: String, Codable {
 
     var design: Font.Design {
         switch self {
-        case .default: return .default
-        case .rounded: return .rounded
-        case .monospaced: return .monospaced
-        case .serif: return .serif
+        case .default: .default
+        case .rounded: .rounded
+        case .monospaced: .monospaced
+        case .serif: .serif
         }
     }
 }
@@ -271,11 +271,13 @@ struct ThemeColors {
     let addAccountBorderStyle: BorderStyle
 
     // MARK: - Enhanced Theme Properties
+
     let fontDesign: ThemeFontDesign
     let fontConfig: ThemeFontConfig
     let overlayStyle: ThemeOverlayStyle
 
     // MARK: - Layout & Component Configuration
+
     let layout: ThemeLayout
     let components: GaugeComponentConfig
 
@@ -346,7 +348,7 @@ struct ThemeColors {
 }
 
 /// Theme manager providing colors and styling for the current theme
-struct ThemeManager {
+enum ThemeManager {
     // Use centralized keys from Constants (static for @AppStorage compatibility)
     static let themeKey = Constants.UserDefaultsKeys.selectedTheme
     static let colorSchemeModeKey = Constants.UserDefaultsKeys.colorSchemeMode
@@ -355,7 +357,7 @@ struct ThemeManager {
     static var current: AppTheme {
         get {
             if let rawValue = UserDefaults.standard.string(forKey: themeKey),
-                let theme = AppTheme(rawValue: rawValue)
+               let theme = AppTheme(rawValue: rawValue)
             {
                 return theme
             }
@@ -370,7 +372,7 @@ struct ThemeManager {
     static var currentColorSchemeMode: ColorSchemeMode {
         get {
             if let rawValue = UserDefaults.standard.string(forKey: colorSchemeModeKey),
-                let mode = ColorSchemeMode(rawValue: rawValue)
+               let mode = ColorSchemeMode(rawValue: rawValue)
             {
                 return mode
             }
@@ -385,27 +387,27 @@ struct ThemeManager {
     static func colors(for theme: AppTheme) -> ThemeColors {
         switch theme {
         case .standard:
-            return standardColors
+            standardColors
         case .minimal:
-            return minimalColors
+            minimalColors
         case .unified:
-            return unifiedColors
+            unifiedColors
         case .premium:
-            return premiumColors
+            premiumColors
         case .nature:
-            return natureColors
+            natureColors
         case .vibrant:
-            return vibrantColors
+            vibrantColors
         case .ocean:
-            return oceanColors
+            oceanColors
         case .sunset:
-            return sunsetColors
+            sunsetColors
         case .midnight:
-            return midnightColors
+            midnightColors
         case .roseGold:
-            return roseGoldColors
+            roseGoldColors
         case .terminal:
-            return terminalColors
+            terminalColors
         }
     }
 
@@ -475,11 +477,11 @@ struct ThemeManager {
         primaryText: .primary,
         secondaryText: .secondary,
         tertiaryText: Color(white: 0.4),
-        sessionGaugeColor: Color(red: 0.29, green: 0.62, blue: 1.0),  // #4A9EFF
-        sonnetGaugeColor: Color(red: 0.29, green: 0.62, blue: 1.0),  // #4A9EFF
-        totalGaugeHealthy: Color(red: 0.29, green: 0.87, blue: 0.50),  // #4ADE80
-        totalGaugeWarning: Color(red: 0.98, green: 0.80, blue: 0.08),  // #FACC15
-        totalGaugeCritical: Color(red: 0.94, green: 0.27, blue: 0.27),  // #EF4444
+        sessionGaugeColor: Color(red: 0.29, green: 0.62, blue: 1.0), // #4A9EFF
+        sonnetGaugeColor: Color(red: 0.29, green: 0.62, blue: 1.0), // #4A9EFF
+        totalGaugeHealthy: Color(red: 0.29, green: 0.87, blue: 0.50), // #4ADE80
+        totalGaugeWarning: Color(red: 0.98, green: 0.80, blue: 0.08), // #FACC15
+        totalGaugeCritical: Color(red: 0.94, green: 0.27, blue: 0.27), // #EF4444
         accentPrimary: Color(red: 0.29, green: 0.62, blue: 1.0),
         accentSecondary: Color(red: 0.29, green: 0.87, blue: 0.50),
         glowEnabled: false,
@@ -531,11 +533,11 @@ struct ThemeManager {
         primaryText: .primary,
         secondaryText: .secondary,
         tertiaryText: Color(white: 0.45),
-        sessionGaugeColor: Color(red: 0.95, green: 0.75, blue: 0.15),  // Gold/Yellow
-        sonnetGaugeColor: Color(red: 0.40, green: 0.70, blue: 1.0),  // Light blue
-        totalGaugeHealthy: Color(red: 0.30, green: 0.85, blue: 0.55),  // Green
-        totalGaugeWarning: Color(red: 0.95, green: 0.75, blue: 0.15),  // Gold
-        totalGaugeCritical: Color(red: 0.95, green: 0.35, blue: 0.35),  // Red
+        sessionGaugeColor: Color(red: 0.95, green: 0.75, blue: 0.15), // Gold/Yellow
+        sonnetGaugeColor: Color(red: 0.40, green: 0.70, blue: 1.0), // Light blue
+        totalGaugeHealthy: Color(red: 0.30, green: 0.85, blue: 0.55), // Green
+        totalGaugeWarning: Color(red: 0.95, green: 0.75, blue: 0.15), // Gold
+        totalGaugeCritical: Color(red: 0.95, green: 0.35, blue: 0.35), // Red
         accentPrimary: Color(red: 0.40, green: 0.70, blue: 1.0),
         accentSecondary: Color(red: 0.95, green: 0.75, blue: 0.15),
         glowEnabled: false,
@@ -560,7 +562,7 @@ struct ThemeManager {
         cardBorderStyle: .solid,
         addAccountBorderStyle: .solid,
         fontDesign: .rounded,
-        fontConfig: .default,  // Uses system rounded
+        fontConfig: .default, // Uses system rounded
         overlayStyle: .none,
         layout: .default,
         components: .default,
@@ -579,11 +581,11 @@ struct ThemeManager {
         primaryText: .primary,
         secondaryText: .secondary,
         tertiaryText: Color(red: 0.45, green: 0.50, blue: 0.55),
-        sessionGaugeColor: Color(red: 0.0, green: 0.85, blue: 0.65),  // Cyan-green
-        sonnetGaugeColor: Color(red: 0.0, green: 0.66, blue: 1.0),  // Electric blue #00A8FF
-        totalGaugeHealthy: Color(red: 0.0, green: 1.0, blue: 0.53),  // Neon green #00FF88
-        totalGaugeWarning: Color(red: 1.0, green: 0.84, blue: 0.0),  // Glowing yellow #FFD700
-        totalGaugeCritical: Color(red: 1.0, green: 0.42, blue: 0.42),  // Glowing red #FF6B6B
+        sessionGaugeColor: Color(red: 0.0, green: 0.85, blue: 0.65), // Cyan-green
+        sonnetGaugeColor: Color(red: 0.0, green: 0.66, blue: 1.0), // Electric blue #00A8FF
+        totalGaugeHealthy: Color(red: 0.0, green: 1.0, blue: 0.53), // Neon green #00FF88
+        totalGaugeWarning: Color(red: 1.0, green: 0.84, blue: 0.0), // Glowing yellow #FFD700
+        totalGaugeCritical: Color(red: 1.0, green: 0.42, blue: 0.42), // Glowing red #FF6B6B
         accentPrimary: Color(red: 0.0, green: 0.66, blue: 1.0),
         accentSecondary: Color(red: 0.0, green: 1.0, blue: 0.53),
         glowEnabled: true,
@@ -626,22 +628,22 @@ struct ThemeManager {
 
     /// Nature theme - Organic wood grain & forest textures
     private static let natureColors = ThemeColors(
-        cardBackgroundDark: Color(red: 0.24, green: 0.20, blue: 0.15).opacity(0.85),  // Warm brown tint
-        cardBackgroundLight: Color(red: 1.0, green: 0.98, blue: 0.94).opacity(0.90),  // Floral white
-        cardBorderDark: Color(red: 0.55, green: 0.41, blue: 0.08).opacity(0.4),  // Goldenrod hint
-        cardBorderLight: Color(red: 0.42, green: 0.56, blue: 0.14).opacity(0.3),  // Olive drab hint
-        headerBackgroundDark: Color(red: 0.18, green: 0.15, blue: 0.10).opacity(0.9),  // Dark wood
-        headerBackgroundLight: Color(red: 0.96, green: 0.94, blue: 0.90).opacity(0.9),  // Warm cream
+        cardBackgroundDark: Color(red: 0.24, green: 0.20, blue: 0.15).opacity(0.85), // Warm brown tint
+        cardBackgroundLight: Color(red: 1.0, green: 0.98, blue: 0.94).opacity(0.90), // Floral white
+        cardBorderDark: Color(red: 0.55, green: 0.41, blue: 0.08).opacity(0.4), // Goldenrod hint
+        cardBorderLight: Color(red: 0.42, green: 0.56, blue: 0.14).opacity(0.3), // Olive drab hint
+        headerBackgroundDark: Color(red: 0.18, green: 0.15, blue: 0.10).opacity(0.9), // Dark wood
+        headerBackgroundLight: Color(red: 0.96, green: 0.94, blue: 0.90).opacity(0.9), // Warm cream
         primaryText: .primary,
         secondaryText: .secondary,
         tertiaryText: Color(red: 0.45, green: 0.40, blue: 0.35),
-        sessionGaugeColor: Color(red: 0.42, green: 0.56, blue: 0.14),  // Olive drab #6B8E23
-        sonnetGaugeColor: Color(red: 0.55, green: 0.27, blue: 0.07),  // Saddle brown #8B4513
-        totalGaugeHealthy: Color(red: 0.13, green: 0.55, blue: 0.13),  // Forest green #228B22
-        totalGaugeWarning: Color(red: 0.85, green: 0.65, blue: 0.13),  // Goldenrod #DAA520
-        totalGaugeCritical: Color(red: 0.80, green: 0.36, blue: 0.36),  // Indian red #CD5C5C
-        accentPrimary: Color(red: 0.29, green: 0.49, blue: 0.35),  // Fern green #4A7C59
-        accentSecondary: Color(red: 0.55, green: 0.41, blue: 0.08),  // Dark goldenrod #8B6914
+        sessionGaugeColor: Color(red: 0.42, green: 0.56, blue: 0.14), // Olive drab #6B8E23
+        sonnetGaugeColor: Color(red: 0.55, green: 0.27, blue: 0.07), // Saddle brown #8B4513
+        totalGaugeHealthy: Color(red: 0.13, green: 0.55, blue: 0.13), // Forest green #228B22
+        totalGaugeWarning: Color(red: 0.85, green: 0.65, blue: 0.13), // Goldenrod #DAA520
+        totalGaugeCritical: Color(red: 0.80, green: 0.36, blue: 0.36), // Indian red #CD5C5C
+        accentPrimary: Color(red: 0.29, green: 0.49, blue: 0.35), // Fern green #4A7C59
+        accentSecondary: Color(red: 0.55, green: 0.41, blue: 0.08), // Dark goldenrod #8B6914
         glowEnabled: false,
         glowIntensity: 0,
         useGradients: false,
@@ -653,11 +655,11 @@ struct ThemeManager {
         backgroundImageLight: "nature_bg_light",
         backgroundOpacity: 1.0,
         gaugeIcon: "leaf.fill",
-        gaugeIconColor: Color(red: 0.42, green: 0.56, blue: 0.14),  // Olive green
+        gaugeIconColor: Color(red: 0.42, green: 0.56, blue: 0.14), // Olive green
         gaugeGlowRadius: 0,
         progressBarGradient: true,
-        progressBarStartColor: Color(red: 1.0, green: 0.85, blue: 0.4),  // Warm yellow (sunrise)
-        progressBarEndColor: Color(red: 0.42, green: 0.56, blue: 0.14),  // Forest green
+        progressBarStartColor: Color(red: 1.0, green: 0.85, blue: 0.4), // Warm yellow (sunrise)
+        progressBarEndColor: Color(red: 0.42, green: 0.56, blue: 0.14), // Forest green
         cardHasShadow: true,
         cardShadowColor: Color.black.opacity(0.15),
         cardShadowRadius: 8,
@@ -682,22 +684,22 @@ struct ThemeManager {
 
     /// Vibrant theme - Neon gradients with glow effects
     private static let vibrantColors = ThemeColors(
-        cardBackgroundDark: Color(red: 0.29, green: 0.0, blue: 0.51).opacity(0.35),  // Indigo tint
-        cardBackgroundLight: Color(red: 0.93, green: 0.51, blue: 0.93).opacity(0.25),  // Violet tint
-        cardBorderDark: Color(red: 0.0, green: 1.0, blue: 1.0).opacity(0.5),  // Cyan glow
-        cardBorderLight: Color(red: 1.0, green: 0.0, blue: 1.0).opacity(0.3),  // Magenta hint
-        headerBackgroundDark: Color(red: 0.20, green: 0.0, blue: 0.35).opacity(0.9),  // Deep purple
-        headerBackgroundLight: Color(red: 0.96, green: 0.90, blue: 0.98).opacity(0.9),  // Light lavender
+        cardBackgroundDark: Color(red: 0.29, green: 0.0, blue: 0.51).opacity(0.35), // Indigo tint
+        cardBackgroundLight: Color(red: 0.93, green: 0.51, blue: 0.93).opacity(0.25), // Violet tint
+        cardBorderDark: Color(red: 0.0, green: 1.0, blue: 1.0).opacity(0.5), // Cyan glow
+        cardBorderLight: Color(red: 1.0, green: 0.0, blue: 1.0).opacity(0.3), // Magenta hint
+        headerBackgroundDark: Color(red: 0.20, green: 0.0, blue: 0.35).opacity(0.9), // Deep purple
+        headerBackgroundLight: Color(red: 0.96, green: 0.90, blue: 0.98).opacity(0.9), // Light lavender
         primaryText: .primary,
         secondaryText: .secondary,
         tertiaryText: Color(red: 0.60, green: 0.50, blue: 0.70),
-        sessionGaugeColor: Color(red: 0.0, green: 0.83, blue: 1.0),  // Vivid cyan #00D4FF
-        sonnetGaugeColor: Color(red: 1.0, green: 0.08, blue: 0.58),  // Deep pink #FF1493
-        totalGaugeHealthy: Color(red: 0.0, green: 1.0, blue: 1.0),  // Cyan #00FFFF
-        totalGaugeWarning: Color(red: 1.0, green: 0.84, blue: 0.0),  // Gold #FFD700
-        totalGaugeCritical: Color(red: 1.0, green: 0.08, blue: 0.58),  // Deep pink #FF1493
-        accentPrimary: Color(red: 0.0, green: 1.0, blue: 1.0),  // Cyan #00FFFF
-        accentSecondary: Color(red: 1.0, green: 0.0, blue: 1.0),  // Magenta #FF00FF
+        sessionGaugeColor: Color(red: 0.0, green: 0.83, blue: 1.0), // Vivid cyan #00D4FF
+        sonnetGaugeColor: Color(red: 1.0, green: 0.08, blue: 0.58), // Deep pink #FF1493
+        totalGaugeHealthy: Color(red: 0.0, green: 1.0, blue: 1.0), // Cyan #00FFFF
+        totalGaugeWarning: Color(red: 1.0, green: 0.84, blue: 0.0), // Gold #FFD700
+        totalGaugeCritical: Color(red: 1.0, green: 0.08, blue: 0.58), // Deep pink #FF1493
+        accentPrimary: Color(red: 0.0, green: 1.0, blue: 1.0), // Cyan #00FFFF
+        accentSecondary: Color(red: 1.0, green: 0.0, blue: 1.0), // Magenta #FF00FF
         glowEnabled: true,
         glowIntensity: 0.7,
         useGradients: true,
@@ -712,10 +714,10 @@ struct ThemeManager {
         gaugeIconColor: nil,
         gaugeGlowRadius: 12,
         progressBarGradient: true,
-        progressBarStartColor: Color(red: 0.0, green: 0.83, blue: 1.0),  // Cyan
-        progressBarEndColor: Color(red: 1.0, green: 0.08, blue: 0.58),  // Pink
+        progressBarStartColor: Color(red: 0.0, green: 0.83, blue: 1.0), // Cyan
+        progressBarEndColor: Color(red: 1.0, green: 0.08, blue: 0.58), // Pink
         cardHasShadow: true,
-        cardShadowColor: Color(red: 0.0, green: 1.0, blue: 1.0).opacity(0.3),  // Cyan glow
+        cardShadowColor: Color(red: 0.0, green: 1.0, blue: 1.0).opacity(0.3), // Cyan glow
         cardShadowRadius: 12,
         cardBorderStyle: .solid,
         addAccountBorderStyle: .dashed,
@@ -738,22 +740,22 @@ struct ThemeManager {
 
     /// Ocean theme - Deep blue & aquamarine
     private static let oceanColors = ThemeColors(
-        cardBackgroundDark: Color(red: 0.04, green: 0.10, blue: 0.18).opacity(0.9),  // Deep blue #0a192f
-        cardBackgroundLight: Color(red: 0.90, green: 0.95, blue: 1.0).opacity(0.9),  // Very light blue
-        cardBorderDark: Color(red: 0.39, green: 1.0, blue: 0.85).opacity(0.3),  // Aquamarine hint
+        cardBackgroundDark: Color(red: 0.04, green: 0.10, blue: 0.18).opacity(0.9), // Deep blue #0a192f
+        cardBackgroundLight: Color(red: 0.90, green: 0.95, blue: 1.0).opacity(0.9), // Very light blue
+        cardBorderDark: Color(red: 0.39, green: 1.0, blue: 0.85).opacity(0.3), // Aquamarine hint
         cardBorderLight: Color(red: 0.04, green: 0.10, blue: 0.18).opacity(0.1),
         headerBackgroundDark: Color(red: 0.02, green: 0.05, blue: 0.10).opacity(0.95),
         headerBackgroundLight: Color(red: 0.85, green: 0.92, blue: 0.98),
         primaryText: .primary,
-        secondaryText: Color(red: 0.53, green: 0.83, blue: 0.60),  // Sea foam #88d498
+        secondaryText: Color(red: 0.53, green: 0.83, blue: 0.60), // Sea foam #88d498
         tertiaryText: Color(white: 0.5),
-        sessionGaugeColor: Color(red: 0.39, green: 1.0, blue: 0.85),  // Aquamarine #64ffda
-        sonnetGaugeColor: Color(red: 0.0, green: 0.75, blue: 1.0),  // Blue
-        totalGaugeHealthy: Color(red: 0.39, green: 1.0, blue: 0.85),  // Aquamarine
-        totalGaugeWarning: Color(red: 1.0, green: 0.42, blue: 0.42),  // Coral #ff6b6b
+        sessionGaugeColor: Color(red: 0.39, green: 1.0, blue: 0.85), // Aquamarine #64ffda
+        sonnetGaugeColor: Color(red: 0.0, green: 0.75, blue: 1.0), // Blue
+        totalGaugeHealthy: Color(red: 0.39, green: 1.0, blue: 0.85), // Aquamarine
+        totalGaugeWarning: Color(red: 1.0, green: 0.42, blue: 0.42), // Coral #ff6b6b
         totalGaugeCritical: Color(red: 1.0, green: 0.25, blue: 0.25),
-        accentPrimary: Color(red: 0.39, green: 1.0, blue: 0.85),  // Aquamarine
-        accentSecondary: Color(red: 0.53, green: 0.83, blue: 0.60),  // Sea foam
+        accentPrimary: Color(red: 0.39, green: 1.0, blue: 0.85), // Aquamarine
+        accentSecondary: Color(red: 0.53, green: 0.83, blue: 0.60), // Sea foam
         glowEnabled: true,
         glowIntensity: 0.3,
         useGradients: true,
@@ -794,9 +796,9 @@ struct ThemeManager {
 
     /// Sunset theme - Warm purple to orange gradients
     private static let sunsetColors = ThemeColors(
-        cardBackgroundDark: Color(red: 0.18, green: 0.11, blue: 0.41).opacity(0.8),  // Deep purple #2d1b69
+        cardBackgroundDark: Color(red: 0.18, green: 0.11, blue: 0.41).opacity(0.8), // Deep purple #2d1b69
         cardBackgroundLight: Color(red: 1.0, green: 0.95, blue: 0.90),
-        cardBorderDark: Color(red: 1.0, green: 0.42, blue: 0.21).opacity(0.4),  // Orange hint
+        cardBorderDark: Color(red: 1.0, green: 0.42, blue: 0.21).opacity(0.4), // Orange hint
         cardBorderLight: Color(red: 0.5, green: 0.2, blue: 0.1).opacity(0.2),
         headerBackgroundDark: Color(red: 0.10, green: 0.05, blue: 0.25).opacity(0.9),
         headerBackgroundLight: Color(red: 1.0, green: 0.90, blue: 0.85),
@@ -805,18 +807,18 @@ struct ThemeManager {
         tertiaryText: Color(red: 0.8, green: 0.6, blue: 0.8),
         // Light mode needs dark text on peachy background (dark variants use base)
         primaryTextDark: nil,
-        primaryTextLight: Color(red: 0.3, green: 0.15, blue: 0.2),  // Dark purple-brown
+        primaryTextLight: Color(red: 0.3, green: 0.15, blue: 0.2), // Dark purple-brown
         secondaryTextDark: nil,
-        secondaryTextLight: Color(red: 0.6, green: 0.3, blue: 0.2),  // Warm brown
+        secondaryTextLight: Color(red: 0.6, green: 0.3, blue: 0.2), // Warm brown
         tertiaryTextDark: nil,
-        tertiaryTextLight: Color(red: 0.5, green: 0.35, blue: 0.4),  // Muted mauve
-        sessionGaugeColor: Color(red: 1.0, green: 0.42, blue: 0.21),  // Orange #ff6b35
-        sonnetGaugeColor: Color(red: 1.0, green: 0.2, blue: 0.4),  // Pinkish red
+        tertiaryTextLight: Color(red: 0.5, green: 0.35, blue: 0.4), // Muted mauve
+        sessionGaugeColor: Color(red: 1.0, green: 0.42, blue: 0.21), // Orange #ff6b35
+        sonnetGaugeColor: Color(red: 1.0, green: 0.2, blue: 0.4), // Pinkish red
         totalGaugeHealthy: Color(red: 1.0, green: 0.42, blue: 0.21),
-        totalGaugeWarning: Color(red: 1.0, green: 0.84, blue: 0.0),  // Gold
+        totalGaugeWarning: Color(red: 1.0, green: 0.84, blue: 0.0), // Gold
         totalGaugeCritical: Color(red: 0.8, green: 0.1, blue: 0.1),
         accentPrimary: Color(red: 1.0, green: 0.42, blue: 0.21),
-        accentSecondary: Color(red: 0.6, green: 0.2, blue: 0.8),  // Purple
+        accentSecondary: Color(red: 0.6, green: 0.2, blue: 0.8), // Purple
         glowEnabled: true,
         glowIntensity: 0.4,
         useGradients: true,
@@ -857,26 +859,26 @@ struct ThemeManager {
 
     /// Midnight theme - Dark cosmic with neon accents
     private static let midnightColors = ThemeColors(
-        cardBackgroundDark: Color(white: 0.05).opacity(0.95),  // Deep black #0d0d0d
-        cardBackgroundLight: Color(red: 0.95, green: 0.93, blue: 1.0).opacity(0.9),  // Light lavender
-        cardBorderDark: Color(red: 0.61, green: 0.36, blue: 0.90).opacity(0.5),  // Neon purple #9b5de5
-        cardBorderLight: Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.4),  // Softer purple
+        cardBackgroundDark: Color(white: 0.05).opacity(0.95), // Deep black #0d0d0d
+        cardBackgroundLight: Color(red: 0.95, green: 0.93, blue: 1.0).opacity(0.9), // Light lavender
+        cardBorderDark: Color(red: 0.61, green: 0.36, blue: 0.90).opacity(0.5), // Neon purple #9b5de5
+        cardBorderLight: Color(red: 0.5, green: 0.3, blue: 0.7).opacity(0.4), // Softer purple
         headerBackgroundDark: Color.black,
-        headerBackgroundLight: Color(red: 0.9, green: 0.88, blue: 0.98),  // Light purple header
+        headerBackgroundLight: Color(red: 0.9, green: 0.88, blue: 0.98), // Light purple header
         primaryText: .white,
-        secondaryText: Color(red: 0.00, green: 0.96, blue: 0.83),  // Electric blue #00f5d4
+        secondaryText: Color(red: 0.00, green: 0.96, blue: 0.83), // Electric blue #00f5d4
         tertiaryText: Color(white: 0.4),
         // Light mode needs dark text on light cosmic background
         primaryTextDark: nil,
-        primaryTextLight: Color(red: 0.2, green: 0.15, blue: 0.35),  // Dark purple
+        primaryTextLight: Color(red: 0.2, green: 0.15, blue: 0.35), // Dark purple
         secondaryTextDark: nil,
-        secondaryTextLight: Color(red: 0.4, green: 0.25, blue: 0.6),  // Medium purple
+        secondaryTextLight: Color(red: 0.4, green: 0.25, blue: 0.6), // Medium purple
         tertiaryTextDark: nil,
-        tertiaryTextLight: Color(red: 0.5, green: 0.45, blue: 0.6),  // Muted purple
-        sessionGaugeColor: Color(red: 0.61, green: 0.36, blue: 0.90),  // Neon purple
-        sonnetGaugeColor: Color(red: 0.00, green: 0.96, blue: 0.83),  // Electric blue
+        tertiaryTextLight: Color(red: 0.5, green: 0.45, blue: 0.6), // Muted purple
+        sessionGaugeColor: Color(red: 0.61, green: 0.36, blue: 0.90), // Neon purple
+        sonnetGaugeColor: Color(red: 0.00, green: 0.96, blue: 0.83), // Electric blue
         totalGaugeHealthy: Color(red: 0.00, green: 0.96, blue: 0.83),
-        totalGaugeWarning: Color(red: 1.0, green: 0.0, blue: 0.5),  // Magenta
+        totalGaugeWarning: Color(red: 1.0, green: 0.0, blue: 0.5), // Magenta
         totalGaugeCritical: Color(red: 1.0, green: 0.0, blue: 0.0),
         accentPrimary: Color(red: 0.00, green: 0.96, blue: 0.83),
         accentSecondary: Color(red: 0.61, green: 0.36, blue: 0.90),
@@ -915,34 +917,34 @@ struct ThemeManager {
         layout: .default,
         components: .midnight,
         appBackgroundDark: Color(white: 0.05),
-        appBackgroundLight: Color(red: 0.92, green: 0.90, blue: 0.98)  // Light lavender background
+        appBackgroundLight: Color(red: 0.92, green: 0.90, blue: 0.98) // Light lavender background
     )
 
     /// Rose Gold theme - Elegant pink & gold luxury
     private static let roseGoldColors = ThemeColors(
         cardBackgroundDark: Color(red: 0.3, green: 0.2, blue: 0.25).opacity(0.9),
-        cardBackgroundLight: Color(red: 1.0, green: 0.96, blue: 0.96).opacity(0.95),  // Cream/Blush #fff5f5
-        cardBorderDark: Color(red: 0.72, green: 0.43, blue: 0.47).opacity(0.6),  // Rose gold #b76e79
+        cardBackgroundLight: Color(red: 1.0, green: 0.96, blue: 0.96).opacity(0.95), // Cream/Blush #fff5f5
+        cardBorderDark: Color(red: 0.72, green: 0.43, blue: 0.47).opacity(0.6), // Rose gold #b76e79
         cardBorderLight: Color(red: 0.72, green: 0.43, blue: 0.47).opacity(0.4),
         headerBackgroundDark: Color(red: 0.25, green: 0.15, blue: 0.2),
-        headerBackgroundLight: Color(red: 1.0, green: 0.84, blue: 0.88),  // Blush #ffd6e0
+        headerBackgroundLight: Color(red: 1.0, green: 0.84, blue: 0.88), // Blush #ffd6e0
         primaryText: Color(red: 0.3, green: 0.1, blue: 0.15),
         secondaryText: Color(red: 0.72, green: 0.43, blue: 0.47),
         tertiaryText: Color(red: 0.6, green: 0.5, blue: 0.5),
         // Dark mode needs light text on dark rose background (light variants use base)
-        primaryTextDark: Color(red: 1.0, green: 0.95, blue: 0.95),  // Soft white/cream
+        primaryTextDark: Color(red: 1.0, green: 0.95, blue: 0.95), // Soft white/cream
         primaryTextLight: nil,
-        secondaryTextDark: Color(red: 0.9, green: 0.7, blue: 0.75),  // Light rose
+        secondaryTextDark: Color(red: 0.9, green: 0.7, blue: 0.75), // Light rose
         secondaryTextLight: nil,
-        tertiaryTextDark: Color(red: 0.7, green: 0.55, blue: 0.6),  // Muted rose
+        tertiaryTextDark: Color(red: 0.7, green: 0.55, blue: 0.6), // Muted rose
         tertiaryTextLight: nil,
-        sessionGaugeColor: Color(red: 0.72, green: 0.43, blue: 0.47),  // Rose gold
+        sessionGaugeColor: Color(red: 0.72, green: 0.43, blue: 0.47), // Rose gold
         sonnetGaugeColor: Color(red: 0.9, green: 0.6, blue: 0.6),
         totalGaugeHealthy: Color(red: 0.72, green: 0.43, blue: 0.47),
-        totalGaugeWarning: Color(red: 0.8, green: 0.5, blue: 0.2),  // Goldish
+        totalGaugeWarning: Color(red: 0.8, green: 0.5, blue: 0.2), // Goldish
         totalGaugeCritical: Color(red: 0.8, green: 0.2, blue: 0.2),
         accentPrimary: Color(red: 0.72, green: 0.43, blue: 0.47),
-        accentSecondary: Color(red: 0.98, green: 0.90, blue: 0.80),  // Champagne
+        accentSecondary: Color(red: 0.98, green: 0.90, blue: 0.80), // Champagne
         glowEnabled: true,
         glowIntensity: 0.2,
         useGradients: true,
@@ -983,22 +985,22 @@ struct ThemeManager {
 
     /// Terminal theme - Retro hacker CRT style
     private static let terminalColors = ThemeColors(
-        cardBackgroundDark: Color.black,  // Pure black #000000
-        cardBackgroundLight: Color(red: 0.98, green: 0.97, blue: 0.94).opacity(0.95),  // Vintage paper
-        cardBorderDark: Color(red: 0.0, green: 1.0, blue: 0.0),  // Green #00ff00
-        cardBorderLight: Color(red: 0.0, green: 0.5, blue: 0.0).opacity(0.5),  // Darker green
+        cardBackgroundDark: Color.black, // Pure black #000000
+        cardBackgroundLight: Color(red: 0.98, green: 0.97, blue: 0.94).opacity(0.95), // Vintage paper
+        cardBorderDark: Color(red: 0.0, green: 1.0, blue: 0.0), // Green #00ff00
+        cardBorderLight: Color(red: 0.0, green: 0.5, blue: 0.0).opacity(0.5), // Darker green
         headerBackgroundDark: Color(white: 0.05),
-        headerBackgroundLight: Color(red: 0.95, green: 0.94, blue: 0.90),  // Light paper header
-        primaryText: Color(red: 0.0, green: 1.0, blue: 0.0),  // Green text
+        headerBackgroundLight: Color(red: 0.95, green: 0.94, blue: 0.90), // Light paper header
+        primaryText: Color(red: 0.0, green: 1.0, blue: 0.0), // Green text
         secondaryText: Color(red: 0.0, green: 0.8, blue: 0.0),
         tertiaryText: Color(red: 0.0, green: 0.6, blue: 0.0),
         // Light mode uses darker green on light paper
         primaryTextDark: nil,
-        primaryTextLight: Color(red: 0.0, green: 0.4, blue: 0.0),  // Dark green
+        primaryTextLight: Color(red: 0.0, green: 0.4, blue: 0.0), // Dark green
         secondaryTextDark: nil,
-        secondaryTextLight: Color(red: 0.0, green: 0.35, blue: 0.0),  // Medium dark green
+        secondaryTextLight: Color(red: 0.0, green: 0.35, blue: 0.0), // Medium dark green
         tertiaryTextDark: nil,
-        tertiaryTextLight: Color(red: 0.2, green: 0.4, blue: 0.2),  // Muted green
+        tertiaryTextLight: Color(red: 0.2, green: 0.4, blue: 0.2), // Muted green
         sessionGaugeColor: Color(red: 0.0, green: 1.0, blue: 0.0),
         sonnetGaugeColor: Color(red: 0.0, green: 1.0, blue: 0.0),
         totalGaugeHealthy: Color(red: 0.0, green: 1.0, blue: 0.0),
@@ -1010,7 +1012,7 @@ struct ThemeManager {
         glowIntensity: 0.5,
         useGradients: false,
         borderWidth: 2,
-        cornerRadius: 0,  // Square corners for terminal
+        cornerRadius: 0, // Square corners for terminal
         gaugeLineWidth: 4,
         gaugeSize: 44,
         backgroundImageDark: "terminal_bg",
@@ -1041,7 +1043,7 @@ struct ThemeManager {
         layout: .verticalStack,
         components: .terminal,
         appBackgroundDark: Color.black,
-        appBackgroundLight: Color(red: 0.96, green: 0.95, blue: 0.92)  // Light vintage paper
+        appBackgroundLight: Color(red: 0.96, green: 0.95, blue: 0.92) // Light vintage paper
     )
 }
 
@@ -1052,7 +1054,7 @@ extension View {
     @ViewBuilder
     func themeGlow(color: Color, theme: ThemeColors) -> some View {
         if theme.glowEnabled {
-            self.shadow(color: color.opacity(theme.glowIntensity), radius: 8)
+            shadow(color: color.opacity(theme.glowIntensity), radius: 8)
                 .shadow(color: color.opacity(theme.glowIntensity * 0.5), radius: 4)
         } else {
             self
@@ -1063,7 +1065,7 @@ extension View {
     @ViewBuilder
     func themeGaugeGlow(color: Color, theme: ThemeColors) -> some View {
         if theme.gaugeGlowRadius > 0 {
-            self.shadow(color: color.opacity(0.6), radius: theme.gaugeGlowRadius)
+            shadow(color: color.opacity(0.6), radius: theme.gaugeGlowRadius)
                 .shadow(color: color.opacity(0.3), radius: theme.gaugeGlowRadius / 2)
         } else {
             self
@@ -1072,8 +1074,7 @@ extension View {
 
     /// Apply card styling based on theme and color scheme
     func themeCard(_ theme: ThemeColors, colorScheme: ColorScheme) -> some View {
-        self
-            .background(theme.cardBackground(for: colorScheme))
+        background(theme.cardBackground(for: colorScheme))
             .cornerRadius(theme.cornerRadius)
             .overlay(
                 RoundedRectangle(cornerRadius: theme.cornerRadius)
@@ -1094,8 +1095,7 @@ extension View {
 
     /// Apply Add Account card styling with special border
     func themeAddAccountCard(_ theme: ThemeColors, colorScheme: ColorScheme) -> some View {
-        self
-            .background(theme.cardBackground(for: colorScheme))
+        background(theme.cardBackground(for: colorScheme))
             .cornerRadius(theme.cornerRadius)
             .overlay(
                 RoundedRectangle(cornerRadius: theme.cornerRadius)
@@ -1121,9 +1121,9 @@ extension View {
         case .none:
             self
         case .scanline:
-            self.overlay(
+            overlay(
                 VStack(spacing: 0) {
-                    ForEach(0..<20, id: \.self) { _ in
+                    ForEach(0 ..< 20, id: \.self) { _ in
                         Rectangle()
                             .fill(Color.black.opacity(0.1))
                             .frame(maxWidth: .infinity, maxHeight: 2)
@@ -1135,17 +1135,18 @@ extension View {
             )
         case .stars:
             // Deterministic star positions using seeded RNG to prevent flickering
-            self.overlay(
+            overlay(
                 GeometryReader { _ in
                     Canvas { context, size in
                         // Use a seeded random generator for deterministic positions
                         var rng = SeededRandomNumberGenerator(seed: 42)
-                        for _ in 0..<30 {
-                            let x = Double.random(in: 0...size.width, using: &rng)
-                            let y = Double.random(in: 0...size.height, using: &rng)
+                        for _ in 0 ..< 30 {
+                            let x = Double.random(in: 0 ... size.width, using: &rng)
+                            let y = Double.random(in: 0 ... size.height, using: &rng)
                             context.fill(
                                 Path(ellipseIn: CGRect(x: x, y: y, width: 2, height: 2)),
-                                with: .color(.white.opacity(0.4)))
+                                with: .color(.white.opacity(0.4))
+                            )
                         }
                     }
                 }
@@ -1153,7 +1154,7 @@ extension View {
                 .mask(RoundedRectangle(cornerRadius: theme.cornerRadius))
             )
         case .vignette:
-            self.overlay(
+            overlay(
                 RoundedRectangle(cornerRadius: theme.cornerRadius)
                     .fill(
                         RadialGradient(
@@ -1182,7 +1183,7 @@ private struct SeededRandomNumberGenerator: RandomNumberGenerator {
 
     mutating func next() -> UInt64 {
         // Linear congruential generator parameters (same as glibc)
-        state = state &* 6364136223846793005 &+ 1442695040888963407
+        state = state &* 6_364_136_223_846_793_005 &+ 1_442_695_040_888_963_407
         return state
     }
 }

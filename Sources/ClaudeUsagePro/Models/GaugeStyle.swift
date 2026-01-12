@@ -54,18 +54,18 @@ enum GaugeStyleType: String, Codable, CaseIterable {
     /// Human-readable name for the gauge style
     var displayName: String {
         switch self {
-        case .circularFull: return "Circular"
-        case .circularArc: return "Arc"
-        case .circularSegmented: return "Segmented Ring"
-        case .circularDual: return "Dual Ring"
-        case .linearBar: return "Progress Bar"
-        case .linearSegmented: return "Segmented Bar"
-        case .linearLED: return "LED Blocks"
-        case .numericLarge: return "Large Number"
-        case .numericDigital: return "Digital"
-        case .numericMinimal: return "Minimal"
-        case .sparkline: return "Sparkline"
-        case .ring: return "Thin Ring"
+        case .circularFull: "Circular"
+        case .circularArc: "Arc"
+        case .circularSegmented: "Segmented Ring"
+        case .circularDual: "Dual Ring"
+        case .linearBar: "Progress Bar"
+        case .linearSegmented: "Segmented Bar"
+        case .linearLED: "LED Blocks"
+        case .numericLarge: "Large Number"
+        case .numericDigital: "Digital"
+        case .numericMinimal: "Minimal"
+        case .sparkline: "Sparkline"
+        case .ring: "Thin Ring"
         }
     }
 
@@ -73,9 +73,9 @@ enum GaugeStyleType: String, Codable, CaseIterable {
     var isNumeric: Bool {
         switch self {
         case .numericLarge, .numericDigital, .numericMinimal:
-            return true
+            true
         default:
-            return false
+            false
         }
     }
 
@@ -83,9 +83,9 @@ enum GaugeStyleType: String, Codable, CaseIterable {
     var isCircular: Bool {
         switch self {
         case .circularFull, .circularArc, .circularSegmented, .circularDual, .ring:
-            return true
+            true
         default:
-            return false
+            false
         }
     }
 
@@ -93,9 +93,9 @@ enum GaugeStyleType: String, Codable, CaseIterable {
     var isLinear: Bool {
         switch self {
         case .linearBar, .linearSegmented, .linearLED:
-            return true
+            true
         default:
-            return false
+            false
         }
     }
 }
@@ -214,7 +214,7 @@ struct GaugeComponentConfig: Equatable {
     static let ocean = GaugeComponentConfig(
         sessionGaugeStyle: .linearBar,
         weeklyGaugeStyle: .circularFull,
-        animationDuration: 0.5  // Slower, wave-like animations
+        animationDuration: 0.5 // Slower, wave-like animations
     )
 
     // MARK: - Computed Properties

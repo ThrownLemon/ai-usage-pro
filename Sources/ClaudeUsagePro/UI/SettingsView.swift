@@ -3,7 +3,7 @@ import SwiftUI
 /// Displays and manages application settings including refresh intervals,
 /// notification preferences, account management, and developer options.
 struct SettingsView: View {
-    @AppStorage("refreshInterval") private var refreshInterval: Double = 300  // Default 5 mins
+    @AppStorage("refreshInterval") private var refreshInterval: Double = 300 // Default 5 mins
     @AppStorage("autoWakeUp") private var autoWakeUp: Bool = false
     @AppStorage(Log.debugModeKey) private var debugModeEnabled: Bool = false
     @AppStorage(ThemeManager.themeKey) private var selectedTheme: String = AppTheme.standard
@@ -30,15 +30,15 @@ struct SettingsView: View {
 
     // Session threshold toggles
     @AppStorage(NotificationSettings.sessionThreshold1EnabledKey) private
-        var sessionThreshold1Enabled: Bool = NotificationSettings.defaultSessionThreshold1Enabled
+    var sessionThreshold1Enabled: Bool = NotificationSettings.defaultSessionThreshold1Enabled
     @AppStorage(NotificationSettings.sessionThreshold2EnabledKey) private
-        var sessionThreshold2Enabled: Bool = NotificationSettings.defaultSessionThreshold2Enabled
+    var sessionThreshold2Enabled: Bool = NotificationSettings.defaultSessionThreshold2Enabled
 
     // Weekly threshold toggles
     @AppStorage(NotificationSettings.weeklyThreshold1EnabledKey) private
-        var weeklyThreshold1Enabled: Bool = NotificationSettings.defaultWeeklyThreshold1Enabled
+    var weeklyThreshold1Enabled: Bool = NotificationSettings.defaultWeeklyThreshold1Enabled
     @AppStorage(NotificationSettings.weeklyThreshold2EnabledKey) private
-        var weeklyThreshold2Enabled: Bool = NotificationSettings.defaultWeeklyThreshold2Enabled
+    var weeklyThreshold2Enabled: Bool = NotificationSettings.defaultWeeklyThreshold2Enabled
 
     // Threshold values (shared between session and weekly for consistency)
     @AppStorage(NotificationSettings.threshold1ValueKey) private var threshold1Value: Double =
@@ -136,13 +136,13 @@ struct SettingsView: View {
                         ThresholdSlider(
                             label: "Lower",
                             value: $threshold1Value,
-                            range: 0.50...0.85
+                            range: 0.50 ... 0.85
                         )
 
                         ThresholdSlider(
                             label: "Higher",
                             value: $threshold2Value,
-                            range: 0.70...0.99
+                            range: 0.70 ... 0.99
                         )
 
                         Text("Get notified when usage reaches these thresholds.")
@@ -158,10 +158,12 @@ struct SettingsView: View {
 
                         Toggle(
                             "Session at \(Int(threshold1Value * 100))% (Lower)",
-                            isOn: $sessionThreshold1Enabled)
+                            isOn: $sessionThreshold1Enabled
+                        )
                         Toggle(
                             "Session at \(Int(threshold2Value * 100))% (Higher)",
-                            isOn: $sessionThreshold2Enabled)
+                            isOn: $sessionThreshold2Enabled
+                        )
                         Toggle("Session Ready", isOn: $sessionReadyEnabled)
 
                         Text("Get notified when a session is ready to start.")
@@ -178,10 +180,12 @@ struct SettingsView: View {
 
                         Toggle(
                             "Weekly at \(Int(threshold1Value * 100))% (Lower)",
-                            isOn: $weeklyThreshold1Enabled)
+                            isOn: $weeklyThreshold1Enabled
+                        )
                         Toggle(
                             "Weekly at \(Int(threshold2Value * 100))% (Higher)",
-                            isOn: $weeklyThreshold2Enabled)
+                            isOn: $weeklyThreshold2Enabled
+                        )
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -246,7 +250,9 @@ struct SettingsView: View {
                                 .foregroundColor(.secondary)
                             Button("Open Console") {
                                 // Use bundle identifier for robustness across macOS versions
-                                if let consoleURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.Console") {
+                                if let consoleURL = NSWorkspace.shared
+                                    .urlForApplication(withBundleIdentifier: "com.apple.Console")
+                                {
                                     NSWorkspace.shared.open(consoleURL)
                                 }
                             }
@@ -430,7 +436,8 @@ struct ThemePreviewView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 8)
                 .stroke(
-                    colors.cardBorder(for: colorScheme), lineWidth: max(colors.borderWidth, 0.5))
+                    colors.cardBorder(for: colorScheme), lineWidth: max(colors.borderWidth, 0.5)
+                )
         )
         .themeOverlay(colors)
     }

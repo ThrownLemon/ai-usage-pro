@@ -1,6 +1,6 @@
 import Foundation
-import SwiftUI
 import os
+import SwiftUI
 
 /// Manages a single account's usage monitoring session.
 /// Handles periodic fetching, threshold notifications, and auto-wake functionality.
@@ -27,6 +27,7 @@ class AccountSession: Identifiable {
     private var oauthService: AnthropicOAuthService?
 
     // MARK: - Thread-Safe Timer/Task Management
+
     // These properties are accessed from both @MainActor context and nonisolated deinit.
     // We use a lock to ensure thread-safe access, even though Timer.invalidate() and
     // Task.cancel() are themselves thread-safe operations.
@@ -55,28 +56,34 @@ class AccountSession: Identifiable {
     /// Creates a new session for monitoring an account's usage.
     /// - Parameter account: The account to monitor
     init(account: ClaudeAccount) {
-        self.id = account.id
+        id = account.id
         self.account = account
 
         switch account.type {
         case .claude:
             // Prefer OAuth service if available, fall back to WebView tracker
             if account.usesOAuth {
-                self.oauthService = AnthropicOAuthService()
-                Log.debug(category, "Using OAuth API for \(account.name) (token prefix: \(account.oauthToken?.prefix(15) ?? "nil")...)")
+                oauthService = AnthropicOAuthService()
+                Log.debug(
+                    category,
+                    "Using OAuth API for \(account.name) (token prefix: \(account.oauthToken?.prefix(15) ?? "nil")...)"
+                )
             } else {
-                self.tracker = TrackerService()
-                Log.debug(category, "Using WebView tracker for \(account.name) (usesOAuth=false, token=\(account.oauthToken != nil ? "present" : "nil"))")
+                tracker = TrackerService()
+                Log.debug(
+                    category,
+                    "Using WebView tracker for \(account.name) (usesOAuth=false, token=\(account.oauthToken != nil ? "present" : "nil"))"
+                )
             }
         case .cursor:
-            self.cursorTracker = CursorTrackerService()
+            cursorTracker = CursorTrackerService()
         case .glm:
-            self.glmTracker = GLMTrackerService()
+            glmTracker = GLMTrackerService()
         }
 
         setupTracker()
     }
-    
+
     deinit {
         // Thread-safe cleanup - manual lock/unlock is used here instead of withLock
         // because we need to perform multiple operations atomically (cancel task,
@@ -89,7 +96,7 @@ class AccountSession: Identifiable {
         _fetchTask = nil
         _timer = nil
     }
-    
+
     /// Starts monitoring the account's usage with periodic refreshes.
     /// Performs an immediate fetch and schedules recurring updates.
     func startMonitoring() {
@@ -113,7 +120,7 @@ class AccountSession: Identifiable {
         timer?.invalidate()
         let interval = UserDefaults.standard.double(forKey: Constants.UserDefaultsKeys.refreshInterval)
         let time = interval > 0 ? interval : Constants.Timeouts.defaultRefreshInterval
-        
+
         timer = Timer.scheduledTimer(withTimeInterval: time, repeats: true) { [weak self] _ in
             Task { @MainActor [weak self] in
                 self?.fetchNow()
@@ -121,37 +128,38 @@ class AccountSession: Identifiable {
             }
         }
     }
-    
+
     /// Sends a ping to wake up a ready session.
     /// - Parameter isAuto: Whether this is an automatic ping (respects auto-wake setting)
     func ping(isAuto: Bool = false) {
-        if isAuto && !UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.autoWakeUp) {
+        if isAuto, !UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.autoWakeUp) {
             Log.debug(category, "Auto-ping cancelled (setting disabled)")
             return
         }
 
         guard let usageData = account.usageData,
               usageData.sessionPercentage == 0,
-              usageData.sessionReset == Constants.Status.ready else {
+              usageData.sessionReset == Constants.Status.ready
+        else {
             Log.debug(category, "Ping skipped (session not ready)")
             return
         }
         Log.debug(category, "\(isAuto ? "Auto" : "Manual") ping requested")
         tracker?.onPingComplete = { [weak self] success in
-            guard let self = self else { return }
+            guard let self else { return }
             if success {
-                Log.debug(self.category, "Ping finished, refreshing data...")
+                Log.debug(category, "Ping finished, refreshing data...")
                 Task { @MainActor [weak self] in
                     try? await Task.sleep(for: .seconds(2))
                     self?.fetchNow()
                 }
             } else {
-                Log.error(self.category, "Ping failed")
+                Log.error(category, "Ping failed")
             }
         }
         tracker?.pingSession()
     }
-    
+
     /// Immediately fetches usage data for the account.
     /// Cancels any in-progress fetch and starts a new one.
     func fetchNow() {
@@ -163,17 +171,17 @@ class AccountSession: Identifiable {
 
         switch account.type {
         case .claude:
-            if let oauthService = oauthService, let token = account.oauthToken {
+            if let oauthService, let token = account.oauthToken {
                 // Use OAuth API (preferred, faster, more reliable)
                 fetchTask = Task { [weak self] in
-                    guard let self = self else { return }
+                    guard let self else { return }
                     do {
                         let usageData = try await oauthService.fetchUsage(token: token)
                         guard !Task.isCancelled else { return }
-                        self.handleOAuthUsageResult(.success(usageData))
+                        handleOAuthUsageResult(.success(usageData))
                     } catch {
                         guard !Task.isCancelled else { return }
-                        self.handleOAuthUsageResult(.failure(error))
+                        handleOAuthUsageResult(.failure(error))
                     }
                 }
             } else {
@@ -182,43 +190,43 @@ class AccountSession: Identifiable {
             }
         case .cursor:
             fetchTask = Task { [weak self] in
-                guard let self = self else { return }
+                guard let self else { return }
                 do {
-                    let info = try await self.cursorTracker?.fetchCursorUsage()
+                    let info = try await cursorTracker?.fetchCursorUsage()
                     guard !Task.isCancelled else { return }
-                    if let info = info {
-                        self.handleCursorUsageResult(.success(info))
+                    if let info {
+                        handleCursorUsageResult(.success(info))
                     }
                 } catch {
                     guard !Task.isCancelled else { return }
-                    self.handleCursorUsageResult(.failure(error))
+                    handleCursorUsageResult(.failure(error))
                 }
             }
         case .glm:
             fetchTask = Task { [weak self] in
-                guard let self = self else { return }
-                guard let apiToken = self.account.apiToken else {
-                    self.handleGLMUsageResult(.failure(GLMTrackerError.tokenNotFound))
+                guard let self else { return }
+                guard let apiToken = account.apiToken else {
+                    handleGLMUsageResult(.failure(GLMTrackerError.tokenNotFound))
                     return
                 }
                 do {
-                    let info = try await self.glmTracker?.fetchGLMUsage(apiToken: apiToken)
+                    let info = try await glmTracker?.fetchGLMUsage(apiToken: apiToken)
                     guard !Task.isCancelled else { return }
-                    if let info = info {
-                        self.handleGLMUsageResult(.success(info))
+                    if let info {
+                        handleGLMUsageResult(.success(info))
                     }
                 } catch {
                     guard !Task.isCancelled else { return }
-                    self.handleGLMUsageResult(.failure(error))
+                    handleGLMUsageResult(.failure(error))
                 }
             }
         }
     }
-    
+
     private func handleOAuthUsageResult(_ result: Result<UsageData, Error>) {
-        self.isFetching = false
+        isFetching = false
         switch result {
-        case .success(var usageData):
+        case var .success(usageData):
             // Clear needsReauth on successful fetch
             account.needsReauth = false
 
@@ -227,7 +235,7 @@ class AccountSession: Identifiable {
                 usageData.email = existingEmail
             }
             usageData.sessionResetDisplay = UsageData.formatSessionResetDisplay(usageData.sessionReset)
-            self.updateWithUsageData(usageData)
+            updateWithUsageData(usageData)
 
             // Cache the successful result
             Task {
@@ -235,19 +243,21 @@ class AccountSession: Identifiable {
             }
 
             // Update account name if we have email and name is generic
-            if let email = usageData.email, account.name.starts(with: "Account ") || account.name.starts(with: "Claude Code") {
+            if let email = usageData.email,
+               account.name.starts(with: "Account ") || account.name.starts(with: "Claude Code")
+            {
                 account.name = email
             }
             Log.debug(category, "OAuth fetch successful for \(account.name)")
-        case .failure(let error):
+        case let .failure(error):
             // Check if this is a 401 error that might be recoverable via refresh
-            if case AnthropicOAuthError.httpError(let statusCode, _) = error, statusCode == 401 {
+            if case let AnthropicOAuthError.httpError(statusCode, _) = error, statusCode == 401 {
                 // Try to refresh the token
                 attemptTokenRefresh()
                 return
             }
 
-            self.lastError = error
+            lastError = error
             Log.error(category, "OAuth fetch failed for \(account.name): \(error.localizedDescription)")
             // No cached data fallback - show error state to user
         }
@@ -260,11 +270,14 @@ class AccountSession: Identifiable {
         guard let refreshToken = account.oauthRefreshToken else {
             Log.warning(category, "No refresh token available for \(account.name), marking as needs re-auth")
             markNeedsReauthWithNotification()
-            lastError = AnthropicOAuthError.httpError(statusCode: 401, message: "Token expired and no refresh token available")
+            lastError = AnthropicOAuthError.httpError(
+                statusCode: 401,
+                message: "Token expired and no refresh token available"
+            )
             return
         }
 
-        guard let oauthService = oauthService else {
+        guard let oauthService else {
             Log.error(category, "No OAuth service available for refresh")
             markNeedsReauthWithNotification()
             return
@@ -312,9 +325,9 @@ class AccountSession: Identifiable {
 
     private func handleCursorUsageResult(_ result: Result<CursorUsageInfo, Error>) {
         // Already on @MainActor, no need for DispatchQueue.main
-        self.isFetching = false
+        isFetching = false
         switch result {
-        case .success(let info):
+        case let .success(info):
             let sessionPercentage = info.planLimit > 0 ? Double(info.planUsed) / Double(info.planLimit) : 0.0
 
             let usageData = UsageData(
@@ -332,18 +345,20 @@ class AccountSession: Identifiable {
                 cursorUsed: info.planUsed,
                 cursorLimit: info.planLimit
             )
-            self.updateWithUsageData(usageData)
+            updateWithUsageData(usageData)
 
             // Cache the successful result
             Task {
                 await UsageCache.shared.set(usageData, for: account.id)
             }
 
-            if let email = info.email, self.account.name.starts(with: "Account ") || self.account.name.starts(with: "Cursor") {
-                self.account.name = "Cursor (\(email))"
+            if let email = info.email,
+               account.name.starts(with: "Account ") || self.account.name.starts(with: "Cursor")
+            {
+                account.name = "Cursor (\(email))"
             }
-        case .failure(let error):
-            self.lastError = error
+        case let .failure(error):
+            lastError = error
             Log.error(Log.Category.cursorTracker, "Fetch failed: \(error)")
             // No cached data fallback - show error state to user
         }
@@ -351,9 +366,9 @@ class AccountSession: Identifiable {
 
     private func handleGLMUsageResult(_ result: Result<GLMUsageInfo, Error>) {
         // Already on @MainActor, no need for DispatchQueue.main
-        self.isFetching = false
+        isFetching = false
         switch result {
-        case .success(let info):
+        case let .success(info):
             // Use shared helper methods for consistent formatting
             let sessionResetDisplay = GLMUsageInfo.formatSessionResetDisplay(sessionPercentage: info.sessionPercentage)
             let weeklyResetDisplay = GLMUsageInfo.formatMonthlyResetDisplay(
@@ -379,18 +394,18 @@ class AccountSession: Identifiable {
                 glmMonthlyUsed: info.monthlyUsed,
                 glmMonthlyLimit: info.monthlyLimit
             )
-            self.updateWithUsageData(usageData)
+            updateWithUsageData(usageData)
 
             // Cache the successful result
             Task {
                 await UsageCache.shared.set(usageData, for: account.id)
             }
 
-            if self.account.name.starts(with: "Account ") || self.account.name.starts(with: "GLM") {
-                self.account.name = "GLM Coding Plan"
+            if account.name.starts(with: "Account ") || account.name.starts(with: "GLM") {
+                account.name = "GLM Coding Plan"
             }
-        case .failure(let error):
-            self.lastError = error
+        case let .failure(error):
+            lastError = error
             Log.error(Log.Category.glmTracker, "Fetch failed: \(error)")
             // No cached data fallback - show error state to user
         }
@@ -398,40 +413,48 @@ class AccountSession: Identifiable {
 
     private func updateWithUsageData(_ usageData: UsageData) {
         // Clear any previous error on successful update
-        self.lastError = nil
+        lastError = nil
 
-        if self.hasReceivedFirstUpdate {
-            self.previousSessionPercentage = self.account.usageData?.sessionPercentage
-            self.previousWeeklyPercentage = self.account.usageData?.weeklyPercentage
+        if hasReceivedFirstUpdate {
+            previousSessionPercentage = account.usageData?.sessionPercentage
+            previousWeeklyPercentage = account.usageData?.weeklyPercentage
         } else {
-            self.hasReceivedFirstUpdate = true
+            hasReceivedFirstUpdate = true
         }
 
-        self.account.usageData = usageData
+        account.usageData = usageData
 
         // Log formatted provider stats
-        Log.providerStats(accountName: self.account.name, accountType: self.account.type, usageData: usageData)
+        Log.providerStats(accountName: account.name, accountType: account.type, usageData: usageData)
 
-        self.checkThresholdCrossingsAndNotify(usageData: usageData)
+        checkThresholdCrossingsAndNotify(usageData: usageData)
 
-        if self.didTransitionToReady(previousPercentage: self.previousSessionPercentage, currentPercentage: usageData.sessionPercentage, currentReset: usageData.sessionReset) {
+        if didTransitionToReady(
+            previousPercentage: previousSessionPercentage,
+            currentPercentage: usageData.sessionPercentage,
+            currentReset: usageData.sessionReset
+        ) {
             if UserDefaults.standard.bool(forKey: Constants.UserDefaultsKeys.autoWakeUp) {
-                Log.debug(category, "Auto-waking up \(self.account.name)...")
-                self.ping(isAuto: true)
+                Log.debug(category, "Auto-waking up \(account.name)...")
+                ping(isAuto: true)
             }
         }
 
-        if let email = usageData.email, self.account.name.starts(with: "Account ") {
-            self.account.name = email
+        if let email = usageData.email, account.name.starts(with: "Account ") {
+            account.name = email
         }
     }
-    
+
     private func didCrossThreshold(previous: Double?, current: Double, threshold: Double) -> Bool {
         guard let prev = previous else { return false }
         return prev < threshold && current >= threshold
     }
 
-    private func didTransitionToReady(previousPercentage: Double?, currentPercentage: Double, currentReset: String) -> Bool {
+    private func didTransitionToReady(
+        previousPercentage: Double?,
+        currentPercentage: Double,
+        currentReset: String
+    ) -> Bool {
         guard let prev = previousPercentage else { return false }
         return prev > 0 && currentPercentage == 0 && currentReset == Constants.Status.ready
     }
@@ -441,29 +464,57 @@ class AccountSession: Identifiable {
         let accountName = account.name
 
         for config in ThresholdDefinitions.sessionThresholds
-        where didCrossThreshold(previous: previousSessionPercentage, current: usageData.sessionPercentage, threshold: config.threshold)
-            && NotificationSettings.shouldSend(type: config.notificationType) {
+            where didCrossThreshold(
+                previous: previousSessionPercentage,
+                current: usageData.sessionPercentage,
+                threshold: config.threshold
+            )
+            && NotificationSettings.shouldSend(type: config.notificationType)
+        {
             let thresholdPercent = Int(config.threshold * 100)
-            NotificationManager.shared.sendNotification(type: config.notificationType, accountId: accountId, accountName: accountName, thresholdPercent: thresholdPercent)
+            NotificationManager.shared.sendNotification(
+                type: config.notificationType,
+                accountId: accountId,
+                accountName: accountName,
+                thresholdPercent: thresholdPercent
+            )
         }
 
         for config in ThresholdDefinitions.weeklyThresholds
-        where didCrossThreshold(previous: previousWeeklyPercentage, current: usageData.weeklyPercentage, threshold: config.threshold)
-            && NotificationSettings.shouldSend(type: config.notificationType) {
+            where didCrossThreshold(
+                previous: previousWeeklyPercentage,
+                current: usageData.weeklyPercentage,
+                threshold: config.threshold
+            )
+            && NotificationSettings.shouldSend(type: config.notificationType)
+        {
             let thresholdPercent = Int(config.threshold * 100)
-            NotificationManager.shared.sendNotification(type: config.notificationType, accountId: accountId, accountName: accountName, thresholdPercent: thresholdPercent)
+            NotificationManager.shared.sendNotification(
+                type: config.notificationType,
+                accountId: accountId,
+                accountName: accountName,
+                thresholdPercent: thresholdPercent
+            )
         }
 
-        if didTransitionToReady(previousPercentage: previousSessionPercentage, currentPercentage: usageData.sessionPercentage, currentReset: usageData.sessionReset) {
+        if didTransitionToReady(
+            previousPercentage: previousSessionPercentage,
+            currentPercentage: usageData.sessionPercentage,
+            currentReset: usageData.sessionReset
+        ) {
             if NotificationSettings.shouldSend(type: .sessionReady) {
-                NotificationManager.shared.sendNotification(type: .sessionReady, accountId: accountId, accountName: accountName)
+                NotificationManager.shared.sendNotification(
+                    type: .sessionReady,
+                    accountId: accountId,
+                    accountName: accountName
+                )
             }
         }
     }
 
     private func setupTracker() {
         tracker?.onUpdate = { [weak self] usageData in
-            guard let self = self else { return }
+            guard let self else { return }
             Task { @MainActor in
                 self.isFetching = false
                 var data = usageData
@@ -473,7 +524,7 @@ class AccountSession: Identifiable {
         }
 
         tracker?.onError = { [weak self] error in
-            guard let self = self else { return }
+            guard let self else { return }
             Task { @MainActor in
                 self.isFetching = false
                 self.lastError = error

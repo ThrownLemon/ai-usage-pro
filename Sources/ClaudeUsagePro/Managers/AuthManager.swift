@@ -1,8 +1,8 @@
-import Foundation
-import WebKit
-import SwiftUI
 import Combine
+import Foundation
 import os
+import SwiftUI
+import WebKit
 
 /// Manages authentication flow for Claude.ai accounts.
 /// Opens a WebKit browser window for login and captures session cookies on success.
@@ -27,7 +27,7 @@ class AuthManager: NSObject, ObservableObject, WKNavigationDelegate {
         }
         webView?.configuration.userContentController.removeAllUserScripts()
     }
-    
+
     func startLogin() {
         Log.debug(category, "Starting login process...")
         DispatchQueue.main.async {
@@ -56,37 +56,45 @@ class AuthManager: NSObject, ObservableObject, WKNavigationDelegate {
             window.center()
             window.contentView = webView
             window.isReleasedWhenClosed = false
-            
-            self.windowCloseObserver = NotificationCenter.default.addObserver(forName: NSWindow.willCloseNotification, object: window, queue: .main) { [weak self] _ in
+
+            self.windowCloseObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.willCloseNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
                 self?.handleWindowClosed()
             }
-            
+
             self.loginWindow = window
             self.isLoginWindowOpen = true
-            
+
             NSApp.setActivationPolicy(.regular)
-            
+
             window.center()
             window.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
-            
+
             let url = Constants.URLs.claudeLogin
             Log.debug(self.category, "Loading URL: \(url)")
             webView.load(URLRequest(url: url))
         }
     }
 
-    func webView(_ webView: WKWebView, decidePolicyFor navigationResponse: WKNavigationResponse, decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void) {
+    func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+    ) {
         if let url = navigationResponse.response.url {
             Log.debug(category, "Navigated to \(url.absoluteString)")
         }
-        
+
         webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak self] cookies in
             self?.checkForSessionKey(cookies: cookies)
         }
         decisionHandler(.allow)
     }
-    
+
     private func checkForSessionKey(cookies: [HTTPCookie]) {
         let hasSession = cookies.contains { $0.name.contains("sessionKey") || $0.name.contains("session-token") }
 
@@ -98,7 +106,7 @@ class AuthManager: NSObject, ObservableObject, WKNavigationDelegate {
             }
         }
     }
-    
+
     // Called when user clicks X
     private func handleWindowClosed() {
         // Remove observer to prevent memory leak
@@ -113,11 +121,11 @@ class AuthManager: NSObject, ObservableObject, WKNavigationDelegate {
         // Switch back to accessory (menu bar only)
         NSApp.setActivationPolicy(.accessory)
 
-        self.loginWindow = nil
-        self.webView = nil
-        self.isLoginWindowOpen = false
+        loginWindow = nil
+        webView = nil
+        isLoginWindowOpen = false
     }
-    
+
     // Called programmatically on success or cancel
     private func closeLoginWindow() {
         loginWindow?.close()

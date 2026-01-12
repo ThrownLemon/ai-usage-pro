@@ -1,5 +1,5 @@
-import XCTest
 @testable import ClaudeUsagePro
+import XCTest
 
 final class KeychainServiceTests: XCTestCase {
     private let testKey = "test_keychain_key_\(UUID().uuidString)"
@@ -103,7 +103,7 @@ final class KeychainServiceTests: XCTestCase {
         let credential = TestCredential(
             username: "testuser",
             token: "secret_token_123",
-            expiresAt: Date(timeIntervalSince1970: 1704067200) // Fixed date for reproducibility
+            expiresAt: Date(timeIntervalSince1970: 1_704_067_200) // Fixed date for reproducibility
         )
 
         // When
@@ -118,7 +118,7 @@ final class KeychainServiceTests: XCTestCase {
         // Given - an array of dictionaries (similar to cookie props storage)
         let cookieProps: [[String: String]] = [
             ["name": "session", "value": "abc123", "domain": "example.com"],
-            ["name": "auth", "value": "xyz789", "domain": "example.com"]
+            ["name": "auth", "value": "xyz789", "domain": "example.com"],
         ]
 
         // When

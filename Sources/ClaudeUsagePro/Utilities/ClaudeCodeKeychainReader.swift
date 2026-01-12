@@ -6,7 +6,7 @@ import Security
 ///
 /// This allows AI Usage Pro to automatically detect and use existing
 /// Claude Code authentication without requiring manual token entry.
-struct ClaudeCodeKeychainReader {
+enum ClaudeCodeKeychainReader {
     /// Errors that can occur when reading Claude Code credentials
     enum Error: LocalizedError {
         case notFound
@@ -17,24 +17,24 @@ struct ClaudeCodeKeychainReader {
         var errorDescription: String? {
             switch self {
             case .notFound:
-                return "Claude Code credentials not found in Keychain"
-            case .accessDenied(let status):
-                return "Access denied to Claude Code credentials (status: \(status))"
+                "Claude Code credentials not found in Keychain"
+            case let .accessDenied(status):
+                "Access denied to Claude Code credentials (status: \(status))"
             case .invalidData:
-                return "Claude Code credentials data is invalid"
-            case .unexpectedError(let status):
-                return "Unexpected Keychain error (status: \(status))"
+                "Claude Code credentials data is invalid"
+            case let .unexpectedError(status):
+                "Unexpected Keychain error (status: \(status))"
             }
         }
 
         var recoverySuggestion: String? {
             switch self {
             case .notFound:
-                return "Make sure Claude Code is installed and you've signed in at least once."
+                "Make sure Claude Code is installed and you've signed in at least once."
             case .accessDenied:
-                return "You may need to allow access to Claude Code's keychain item in Keychain Access."
+                "You may need to allow access to Claude Code's keychain item in Keychain Access."
             default:
-                return nil
+                nil
             }
         }
     }
@@ -49,6 +49,7 @@ struct ClaudeCodeKeychainReader {
             let refreshToken: String?
             let expiresAt: Int64?
         }
+
         let claudeAiOauth: OAuthData?
     }
 
@@ -69,14 +70,15 @@ struct ClaudeCodeKeychainReader {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: primaryService,
             kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne
+            kSecMatchLimit as String: kSecMatchLimitOne,
         ]
 
         var result: AnyObject?
         let status = SecItemCopyMatching(query as CFDictionary, &result)
 
         guard status == errSecSuccess,
-              let data = result as? Data else {
+              let data = result as? Data
+        else {
             throw Error.notFound
         }
 

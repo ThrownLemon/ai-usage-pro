@@ -107,7 +107,8 @@ actor UsageCache {
 
     private func loadFromDisk() {
         guard let url = cacheFileURL,
-              FileManager.default.fileExists(atPath: url.path) else {
+              FileManager.default.fileExists(atPath: url.path)
+        else {
             return
         }
 

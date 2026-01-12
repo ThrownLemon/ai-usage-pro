@@ -1,6 +1,6 @@
-import Foundation
 import AppKit
 import CryptoKit
+import Foundation
 import os
 
 /// Handles the OAuth PKCE login flow for Anthropic/Claude.
@@ -18,6 +18,7 @@ class AnthropicOAuthLogin: ObservableObject {
     private var scopes: String { Constants.OAuth.scopes }
 
     // MARK: - PKCE State
+
     // Note: In Claude's OAuth, the state parameter IS the code verifier
 
     private var codeVerifier: String?
@@ -27,7 +28,7 @@ class AnthropicOAuthLogin: ObservableObject {
 
     @Published var isAuthenticating = false
     @Published var errorMessage: String?
-    @Published var awaitingCode = false  // True when waiting for user to paste code
+    @Published var awaitingCode = false // True when waiting for user to paste code
 
     // MARK: - Callbacks
 
@@ -87,7 +88,7 @@ class AnthropicOAuthLogin: ObservableObject {
         let returnedState = parts.count > 1 ? String(parts[1]) : nil
 
         // Verify state matches the verifier (CSRF protection)
-        if let returnedState = returnedState, returnedState != codeVerifier {
+        if let returnedState, returnedState != codeVerifier {
             Log.error(category, "State mismatch - possible CSRF attack")
             errorMessage = "Security error: state mismatch"
             clearPKCEState()
@@ -122,7 +123,8 @@ class AnthropicOAuthLogin: ObservableObject {
 
         // Create SHA256 hash of verifier for challenge
         guard let verifier = codeVerifier,
-              let verifierData = verifier.data(using: .utf8) else {
+              let verifierData = verifier.data(using: .utf8)
+        else {
             return
         }
 
@@ -137,14 +139,14 @@ class AnthropicOAuthLogin: ObservableObject {
     private func buildAuthorizationURL(challenge: String) -> URL? {
         var components = URLComponents(string: authURL)
         components?.queryItems = [
-            URLQueryItem(name: "code", value: "true"),  // Required by Claude's OAuth
+            URLQueryItem(name: "code", value: "true"), // Required by Claude's OAuth
             URLQueryItem(name: "client_id", value: clientId),
             URLQueryItem(name: "response_type", value: "code"),
             URLQueryItem(name: "redirect_uri", value: redirectURI),
             URLQueryItem(name: "scope", value: scopes),
-            URLQueryItem(name: "state", value: codeVerifier),  // State IS the verifier
+            URLQueryItem(name: "state", value: codeVerifier), // State IS the verifier
             URLQueryItem(name: "code_challenge", value: challenge),
-            URLQueryItem(name: "code_challenge_method", value: "S256")
+            URLQueryItem(name: "code_challenge_method", value: "S256"),
         ]
         return components?.url
     }
@@ -211,11 +213,11 @@ class AnthropicOAuthLogin: ObservableObject {
             "grant_type": "authorization_code",
             "client_id": clientId,
             "redirect_uri": redirectURI,
-            "code_verifier": verifier
+            "code_verifier": verifier,
         ]
 
         // Include state if present
-        if let state = state {
+        if let state {
             bodyParams["state"] = state
         }
 
@@ -229,7 +231,7 @@ class AnthropicOAuthLogin: ObservableObject {
             throw OAuthLoginError.invalidResponse
         }
 
-        guard (200...299).contains(httpResponse.statusCode) else {
+        guard (200 ... 299).contains(httpResponse.statusCode) else {
             let errorBody = String(data: data, encoding: .utf8) ?? "Unknown error"
             Log.error(category, "Token exchange HTTP error \(httpResponse.statusCode): \(errorBody)")
             throw OAuthLoginError.httpError(statusCode: httpResponse.statusCode, message: errorBody)
@@ -256,13 +258,13 @@ enum OAuthLoginError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .invalidURL:
-            return "Invalid OAuth URL"
+            "Invalid OAuth URL"
         case .invalidResponse:
-            return "Invalid response from server"
-        case .httpError(let code, let message):
-            return "HTTP error \(code): \(message)"
-        case .decodingError(let error):
-            return "Failed to parse response: \(error.localizedDescription)"
+            "Invalid response from server"
+        case let .httpError(code, message):
+            "HTTP error \(code): \(message)"
+        case let .decodingError(error):
+            "Failed to parse response: \(error.localizedDescription)"
         }
     }
 }

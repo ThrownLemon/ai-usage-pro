@@ -96,11 +96,11 @@ class AccountSession: Identifiable {
     deinit {
         // Thread-safe cleanup using the lock
         resourceLock.lock()
+        defer { resourceLock.unlock() }
         _fetchTask?.cancel()
         _timer?.invalidate()
         _fetchTask = nil
         _timer = nil
-        resourceLock.unlock()
     }
     
     /// Starts monitoring the account's usage with periodic refreshes.

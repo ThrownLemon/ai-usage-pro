@@ -1,7 +1,8 @@
 import Foundation
-import SwiftUI
+import Observation
 
 /// Represents the visual state of the menu bar icon based on usage.
+/// Note: Color mapping is handled in the UI layer to keep this enum UI-agnostic.
 enum MenuBarIconState {
     /// No accounts configured
     case noAccounts
@@ -26,19 +27,6 @@ enum MenuBarIconState {
         case .noData: return "questionmark.circle"
         case .ready: return "play.circle.fill"
         case .lowUsage, .mediumUsage, .highUsage: return "checkmark.circle"
-        }
-    }
-
-    /// The color associated with this state
-    var iconColor: Color {
-        switch self {
-        case .noAccounts: return .secondary
-        case .loading: return .blue
-        case .noData: return .gray
-        case .ready: return .green
-        case .lowUsage: return .green
-        case .mediumUsage: return .orange
-        case .highUsage: return .red
         }
     }
 }
@@ -294,9 +282,13 @@ class AppState {
         // First, try to migrate any legacy data from UserDefaults
         migrateCredentialsFromUserDefaults()
 
-        if let data = defaults.data(forKey: accountsKey),
-            var accounts = try? JSONDecoder().decode([ClaudeAccount].self, from: data)
-        {
+        guard let data = defaults.data(forKey: accountsKey) else {
+            Log.info(Log.Category.app, "No saved accounts found")
+            return
+        }
+
+        do {
+            var accounts = try JSONDecoder().decode([ClaudeAccount].self, from: data)
             Log.info(Log.Category.app, "Loading \(accounts.count) saved accounts")
             for i in accounts.indices {
                 accounts[i].usageData = nil
@@ -314,8 +306,11 @@ class AppState {
                 subscribeToSessionChanges(session)
                 session.startMonitoring()
             }
-        } else {
-            Log.info(Log.Category.app, "No saved accounts found")
+        } catch {
+            Log.error(
+                Log.Category.app,
+                "Failed to decode saved accounts: \(error.localizedDescription). Data size: \(data.count) bytes"
+            )
         }
     }
 
@@ -441,8 +436,10 @@ class AppState {
             session.stopMonitoring()
         }
 
-        // Clear in-memory sessions
+        // Clear in-memory sessions and reset observable state
         sessions.removeAll()
+        nextRefresh = Date()
+        iconRefreshTrigger = UUID()
 
         // Clear Keychain (credentials)
         KeychainService.deleteAll()

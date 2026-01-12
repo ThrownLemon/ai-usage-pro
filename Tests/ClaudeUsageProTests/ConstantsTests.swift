@@ -21,6 +21,10 @@ final class ConstantsTests: XCTestCase {
         XCTAssertEqual(Constants.Status.unknown, "Unknown")
     }
 
+    func testStatusRefreshing() {
+        XCTAssertEqual(Constants.Status.refreshing, "Refreshing...")
+    }
+
     // MARK: - Usage Thresholds Tests
 
     func testUsageThresholdsValues() {

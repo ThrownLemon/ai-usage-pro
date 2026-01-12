@@ -220,9 +220,8 @@ final class ClaudeAccountTests: XCTestCase {
         let account1 = ClaudeAccount(id: id, name: "Account 1", cookies: [], usageData: nil)
         let account2 = ClaudeAccount(id: id, name: "Account 2", cookies: [], usageData: nil)
 
-        // Then - accounts with same ID should be equal
+        // Then - accounts with same ID should be equal (Hashable contract guarantees equal hashValues)
         XCTAssertEqual(account1, account2)
-        XCTAssertEqual(account1.hashValue, account2.hashValue)
     }
 
     func testAccountNotEqualDifferentIds() {

@@ -417,6 +417,7 @@ struct AddAccountView: View {
         guard !token.isEmpty else { return }
 
         isValidating = true
+        defer { isValidating = false }
         errorMessage = nil
 
         do {
@@ -437,8 +438,6 @@ struct AddAccountView: View {
 
             errorMessage = "Could not validate token. Please check and try again."
         }
-
-        isValidating = false
     }
 
     private var glmTokenEntry: some View {
@@ -554,6 +553,7 @@ struct AddAccountView: View {
         guard !token.isEmpty else { return }
 
         isValidating = true
+        defer { isValidating = false }
         errorMessage = nil
 
         do {
@@ -579,7 +579,5 @@ struct AddAccountView: View {
                 errorMessage = error.localizedDescription
             }
         }
-
-        isValidating = false
     }
 }

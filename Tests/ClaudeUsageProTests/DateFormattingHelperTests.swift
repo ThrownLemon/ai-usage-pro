@@ -75,6 +75,30 @@ final class DateFormattingHelperTests: XCTestCase {
         XCTAssertEqual(result, Constants.Status.ready)
     }
 
+    func testFormatTimeRemainingLargeInterval() {
+        // Given - a fixed reference date and a future date 2 days 5 hours later
+        let referenceDate = Date(timeIntervalSince1970: 1_600_000_000)
+        let futureDate = referenceDate.addingTimeInterval(2 * 86400 + 5 * 3600)
+
+        // When
+        let result = DateFormattingHelper.formatTimeRemaining(futureDate, referenceDate: referenceDate)
+
+        // Then - should show days and hours format for large intervals
+        XCTAssertEqual(result, "2d 5h")
+    }
+
+    func testFormatTimeRemainingSubMinute() {
+        // Given - a fixed reference date and a future date 30 seconds later
+        let referenceDate = Date(timeIntervalSince1970: 1_600_000_000)
+        let futureDate = referenceDate.addingTimeInterval(30)
+
+        // When
+        let result = DateFormattingHelper.formatTimeRemaining(futureDate, referenceDate: referenceDate)
+
+        // Then - should show "<1m" for sub-minute durations
+        XCTAssertEqual(result, "<1m")
+    }
+
     // MARK: - Reset Time Formatting Tests
 
     func testFormatResetTimeValidDate() {
@@ -119,15 +143,15 @@ final class DateFormattingHelperTests: XCTestCase {
         let calendar = Calendar(identifier: .gregorian)
         let date = calendar.date(from: components)!
 
-        // When
-        let result = DateFormattingHelper.formatDateDisplay(date)
+        // When - use fixed locale and timezone for deterministic testing
+        let result = DateFormattingHelper.formatDateDisplay(
+            date,
+            locale: Locale(identifier: "en_US"),
+            timeZone: TimeZone(identifier: "UTC")!
+        )
 
-        // Then - Result should contain day abbreviation and AM/PM time
-        XCTAssertFalse(result.isEmpty)
-        // Should match format "E h:mm a" (e.g., "Wed 2:30 PM" or localized equivalent)
-        XCTAssertTrue(result.count >= 8, "Expected at least 8 chars for 'E h:mm a' format, got: \(result)")
-        // Should contain a colon for time
-        XCTAssertTrue(result.contains(":"), "Expected time with colon, got: \(result)")
+        // Then - Result should be exactly "Wed 2:30 PM" in en_US locale and UTC timezone
+        XCTAssertEqual(result, "Wed 2:30 PM")
     }
 
     func testFormatResetDateValidDate() {

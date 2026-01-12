@@ -81,7 +81,7 @@ final class UsageDataTests: XCTestCase {
         let usageData1 = UsageData(
             sessionPercentage: 0.75,
             sessionReset: "2h 30m",
-            sessionResetDisplay: "Resets in 2h 30m",
+            sessionResetDisplay: "\(Constants.Status.resetsInPrefix) 2h 30m",
             weeklyPercentage: 0.50,
             weeklyReset: "Thu 8:00 AM",
             weeklyResetDisplay: "Thu 8:00 AM",
@@ -95,7 +95,7 @@ final class UsageDataTests: XCTestCase {
         let usageData2 = UsageData(
             sessionPercentage: 0.75,
             sessionReset: "2h 30m",
-            sessionResetDisplay: "Resets in 2h 30m",
+            sessionResetDisplay: "\(Constants.Status.resetsInPrefix) 2h 30m",
             weeklyPercentage: 0.50,
             weeklyReset: "Thu 8:00 AM",
             weeklyResetDisplay: "Thu 8:00 AM",
@@ -115,7 +115,7 @@ final class UsageDataTests: XCTestCase {
         let usageData = UsageData(
             sessionPercentage: 0.75,
             sessionReset: "2h 30m",
-            sessionResetDisplay: "Resets in 2h 30m",
+            sessionResetDisplay: "\(Constants.Status.resetsInPrefix) 2h 30m",
             weeklyPercentage: 0.50,
             weeklyReset: "Thu 8:00 AM",
             weeklyResetDisplay: "Thu 8:00 AM",
@@ -144,7 +144,7 @@ final class UsageDataTests: XCTestCase {
         let usageData = UsageData(
             sessionPercentage: 0.75,
             sessionReset: "2h 30m",
-            sessionResetDisplay: "Resets in 2h 30m",
+            sessionResetDisplay: "\(Constants.Status.resetsInPrefix) 2h 30m",
             weeklyPercentage: 0.50,
             weeklyReset: "Thu 8:00 AM",
             weeklyResetDisplay: "Thu 8:00 AM",

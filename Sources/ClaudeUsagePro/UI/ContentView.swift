@@ -426,6 +426,12 @@ struct ContentView: View {
             // Request notification permission on first launch
             requestNotificationPermission()
         }
+        .onDisappear {
+            // Clear callbacks to prevent retain cycles
+            authManager.onLoginSuccess = nil
+            oauthLogin.onLoginSuccess = nil
+            oauthLogin.onLoginCancel = nil
+        }
     }
 
     // Request notification permission on app launch

@@ -49,7 +49,10 @@ enum DateFormattingHelper {
     /// - Parameter isoDate: ISO 8601 formatted date string
     /// - Returns: Formatted string like "3h 21m" or "Ready" if time has passed
     static func formatResetTime(isoDate: String) -> String {
-        guard let date = parseISO8601(isoDate) else { return isoDate }
+        guard let date = parseISO8601(isoDate) else {
+            Log.debug(Log.Category.app, "Failed to parse ISO8601 date: \(isoDate.prefix(50))")
+            return isoDate
+        }
         return formatTimeRemaining(date)
     }
 
@@ -57,13 +60,22 @@ enum DateFormattingHelper {
     /// - Parameters:
     ///   - date: The target date
     ///   - referenceDate: The reference date to calculate from (defaults to now)
-    /// - Returns: Formatted string like "3h 21m" or "Ready" if time has passed
+    /// - Returns: Formatted string like "3h 21m", "2d 5h", "<1m", or "Ready" if time has passed
     static func formatTimeRemaining(_ date: Date, referenceDate: Date = Date()) -> String {
         let diff = date.timeIntervalSince(referenceDate)
         if diff <= 0 { return Constants.Status.ready }
 
-        let hours = Int(diff) / 3600
-        let mins = (Int(diff) % 3600) / 60
+        let totalSeconds = Int(diff)
+        let days = totalSeconds / 86400
+        let hours = (totalSeconds % 86400) / 3600
+        let mins = (totalSeconds % 3600) / 60
+
+        if days > 0 {
+            return "\(days)d \(hours)h"
+        }
+        if hours == 0 && mins == 0 {
+            return "<1m"
+        }
         return "\(hours)h \(mins)m"
     }
 
@@ -71,16 +83,24 @@ enum DateFormattingHelper {
     /// - Parameter isoDate: ISO 8601 formatted date string
     /// - Returns: Formatted string like "Thu 8:59 PM"
     static func formatResetDate(isoDate: String) -> String {
-        guard let date = parseISO8601(isoDate) else { return isoDate }
+        guard let date = parseISO8601(isoDate) else {
+            Log.debug(Log.Category.app, "Failed to parse ISO8601 date for display: \(isoDate.prefix(50))")
+            return isoDate
+        }
         return formatDateDisplay(date)
     }
 
     /// Formats a Date into a display string.
-    /// - Parameter date: The date to format
+    /// - Parameters:
+    ///   - date: The date to format
+    ///   - locale: The locale to use (defaults to current locale)
+    ///   - timeZone: The timezone to use (defaults to current timezone)
     /// - Returns: Formatted string like "Thu 8:59 PM"
-    static func formatDateDisplay(_ date: Date) -> String {
+    static func formatDateDisplay(_ date: Date, locale: Locale = .current, timeZone: TimeZone = .current) -> String {
         displayFormatterLock.lock()
         defer { displayFormatterLock.unlock() }
+        displayDateFormatter.locale = locale
+        displayDateFormatter.timeZone = timeZone
         return displayDateFormatter.string(from: date)
     }
 }

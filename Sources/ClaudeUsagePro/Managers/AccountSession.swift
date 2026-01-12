@@ -40,30 +40,14 @@ class AccountSession: Identifiable {
 
     /// Thread-safe access to timer
     private var timer: Timer? {
-        get {
-            resourceLock.lock()
-            defer { resourceLock.unlock() }
-            return _timer
-        }
-        set {
-            resourceLock.lock()
-            defer { resourceLock.unlock() }
-            _timer = newValue
-        }
+        get { resourceLock.withLock { _timer } }
+        set { resourceLock.withLock { _timer = newValue } }
     }
 
     /// Thread-safe access to fetchTask
     private var fetchTask: Task<Void, Never>? {
-        get {
-            resourceLock.lock()
-            defer { resourceLock.unlock() }
-            return _fetchTask
-        }
-        set {
-            resourceLock.lock()
-            defer { resourceLock.unlock() }
-            _fetchTask = newValue
-        }
+        get { resourceLock.withLock { _fetchTask } }
+        set { resourceLock.withLock { _fetchTask = newValue } }
     }
 
     var onRefreshTick: (() -> Void)?
@@ -94,7 +78,8 @@ class AccountSession: Identifiable {
     }
     
     deinit {
-        // Thread-safe cleanup using the lock
+        // Thread-safe cleanup - manual lock/unlock required here because
+        // withLock closure is nonisolated and can't access MainActor properties
         resourceLock.lock()
         defer { resourceLock.unlock() }
         _fetchTask?.cancel()

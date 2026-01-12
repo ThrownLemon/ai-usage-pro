@@ -29,7 +29,7 @@ struct LinearBarGauge: View {
 
     private var progressFill: some ShapeStyle {
         if theme.progressBarGradient {
-            return AnyShapeStyle(
+            AnyShapeStyle(
                 LinearGradient(
                     colors: [theme.progressBarStartColor, theme.progressBarEndColor],
                     startPoint: .leading,
@@ -37,7 +37,7 @@ struct LinearBarGauge: View {
                 )
             )
         } else {
-            return AnyShapeStyle(color)
+            AnyShapeStyle(color)
         }
     }
 }
@@ -55,9 +55,9 @@ struct LinearLEDGauge: View {
     private let spacing: CGFloat = 2
 
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             HStack(spacing: spacing) {
-                ForEach(0..<blockCount, id: \.self) { index in
+                ForEach(0 ..< blockCount, id: \.self) { index in
                     let blockPercentage = Double(index) / Double(blockCount)
                     let isFilled = blockPercentage < percentage
 
@@ -77,11 +77,11 @@ struct LinearLEDGauge: View {
     private func blockColor(for blockPercentage: Double) -> Color {
         // Color progression: green → yellow → red
         if blockPercentage < 0.5 {
-            return color
+            color
         } else if blockPercentage < 0.75 {
-            return theme.totalGaugeWarning
+            theme.totalGaugeWarning
         } else {
-            return theme.totalGaugeCritical
+            theme.totalGaugeCritical
         }
     }
 }
@@ -98,9 +98,9 @@ struct LinearSegmentedGauge: View {
     private let spacing: CGFloat = 3
 
     var body: some View {
-        GeometryReader { geometry in
+        GeometryReader { _ in
             HStack(spacing: spacing) {
-                ForEach(0..<segmentCount, id: \.self) { index in
+                ForEach(0 ..< segmentCount, id: \.self) { index in
                     let segmentPercentage = Double(index) / Double(segmentCount)
                     let fillAmount = min(1.0, max(0, (percentage - segmentPercentage) * Double(segmentCount)))
 
@@ -125,11 +125,11 @@ struct LinearSegmentedGauge: View {
 
     private func segmentColor(for segmentPercentage: Double) -> Color {
         if segmentPercentage < 0.5 {
-            return theme.totalGaugeHealthy
+            theme.totalGaugeHealthy
         } else if segmentPercentage < 0.75 {
-            return theme.totalGaugeWarning
+            theme.totalGaugeWarning
         } else {
-            return theme.totalGaugeCritical
+            theme.totalGaugeCritical
         }
     }
 }

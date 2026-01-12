@@ -3,7 +3,6 @@ import Foundation
 /// Centralized utility for date formatting operations used across the app.
 /// Consolidates date parsing and formatting to ensure consistency and avoid duplication.
 enum DateFormattingHelper {
-
     // MARK: - ISO8601 Parsers
 
     /// Primary ISO8601 formatter with fractional seconds support
@@ -79,7 +78,7 @@ enum DateFormattingHelper {
         if days > 0 {
             return "\(days)d \(hours)h"
         }
-        if hours == 0 && mins == 0 {
+        if hours == 0, mins == 0 {
             return "<1m"
         }
         // Omit zero components for cleaner display (e.g., "30m" instead of "0h 30m")

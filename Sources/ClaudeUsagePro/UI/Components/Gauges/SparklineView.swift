@@ -68,7 +68,7 @@ struct SparklineView: View {
             } else {
                 // Not enough data - show placeholder
                 HStack(spacing: 4) {
-                    ForEach(0..<8, id: \.self) { _ in
+                    ForEach(0 ..< 8, id: \.self) { _ in
                         Circle()
                             .fill(color.opacity(0.2))
                             .frame(width: 3, height: 3)
@@ -195,7 +195,7 @@ struct BarSparklineView: View {
             } else {
                 // Placeholder with deterministic heights based on index
                 HStack(spacing: 2) {
-                    ForEach(0..<12, id: \.self) { index in
+                    ForEach(0 ..< 12, id: \.self) { index in
                         RoundedRectangle(cornerRadius: 1)
                             .fill(color.opacity(0.2))
                             .frame(height: placeholderBarHeight(index: index, maxHeight: height * 0.6))
@@ -208,11 +208,11 @@ struct BarSparklineView: View {
 
     private func barColor(for percentage: Double) -> Color {
         if percentage < 0.5 {
-            return theme.totalGaugeHealthy
+            theme.totalGaugeHealthy
         } else if percentage < 0.75 {
-            return theme.totalGaugeWarning
+            theme.totalGaugeWarning
         } else {
-            return theme.totalGaugeCritical
+            theme.totalGaugeCritical
         }
     }
 

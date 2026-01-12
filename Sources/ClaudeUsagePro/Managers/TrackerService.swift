@@ -1,7 +1,7 @@
-import Foundation
-import WebKit
 import Combine
+import Foundation
 import os
+import WebKit
 
 /// Service for fetching Claude.ai usage data using a hidden WKWebView.
 /// Injects JavaScript to call Claude's internal APIs and parse responses.
@@ -46,7 +46,7 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
         webView?.navigationDelegate = nil
         webView?.configuration.userContentController.removeAllUserScripts()
     }
-    
+
     /// Pings the session to wake it up and start a new usage window.
     /// Creates a temporary chat conversation, sends a minimal message, then deletes it.
     func pingSession() {
@@ -57,21 +57,21 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
             return
         }
         pendingPing = true
-        
+
         pingTimeoutWorkItem?.cancel()
         let timeoutWorkItem = DispatchWorkItem { [weak self] in
-            guard let self = self, self.pendingPing else { return }
-            Log.error(self.category, "Ping timed out")
-            self.pendingPing = false
-            self.onPingComplete?(false)
+            guard let self, pendingPing else { return }
+            Log.error(category, "Ping timed out")
+            pendingPing = false
+            onPingComplete?(false)
         }
         pingTimeoutWorkItem = timeoutWorkItem
         DispatchQueue.main.asyncAfter(deadline: .now() + Constants.Timeouts.pingTimeout, execute: timeoutWorkItem)
-        
+
         // Create fresh webView with stored cookies
         let config = WKWebViewConfiguration()
         config.websiteDataStore = .nonPersistent()
-        
+
         let group = DispatchGroup()
         for cookie in storedCookies {
             group.enter()
@@ -79,7 +79,7 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                 group.leave()
             }
         }
-        
+
         group.notify(queue: .main) {
             Log.debug(self.category, "Cookies injected for ping, loading page...")
 
@@ -94,7 +94,7 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
             webView.load(URLRequest(url: url))
         }
     }
-    
+
     /// Executes the JavaScript ping script that creates a temporary conversation.
     private func executePingScript() {
         let script = """
@@ -250,12 +250,12 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
             }
             return result;
         """
-        
+
         Log.debug(category, "Executing ping script...")
         webView?.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { [self] result in
             var success = false
             switch result {
-            case .success(let value):
+            case let .success(value):
                 if let dict = value as? [String: Any] {
                     Log.debug(category, "Ping completed: \(dict)")
                     if dict["success"] != nil {
@@ -264,23 +264,23 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                 } else {
                     Log.debug(category, "Ping result: \(String(describing: value))")
                 }
-            case .failure(let error):
+            case let .failure(error):
                 Log.error(category, "Ping FAILED: \(error)")
             }
-            if self.pendingPing {
-                self.onPingComplete?(success)
+            if pendingPing {
+                onPingComplete?(success)
             }
-            self.pendingPing = false
-            self.pingTimeoutWorkItem?.cancel()
-            self.pingTimeoutWorkItem = nil
+            pendingPing = false
+            pingTimeoutWorkItem?.cancel()
+            pingTimeoutWorkItem = nil
         }
     }
-    
+
     /// Fetches usage data by loading Claude.ai in a hidden WebView.
     /// - Parameter cookies: Authentication cookies from the login session
     func fetchUsage(cookies: [HTTPCookie]) {
         Log.debug(category, "Starting fetch for \(cookies.count) cookies")
-        self.storedCookies = cookies // Store for later ping use
+        storedCookies = cookies // Store for later ping use
         DispatchQueue.main.async {
             let config = WKWebViewConfiguration()
             config.websiteDataStore = .nonPersistent()
@@ -299,7 +299,7 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
             }
         }
     }
-    
+
     /// Creates and starts the hidden WebView browser for fetching usage data.
     /// - Parameter config: The WebView configuration with injected cookies
     private func startHiddenBrowser(config: WKWebViewConfiguration) {
@@ -317,17 +317,17 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
 
     /// Called when the WebView finishes loading a page.
     /// Injects JavaScript to fetch usage data or execute ping.
-    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
         Log.debug(category, "Page finished loading, injecting JS...")
-        
+
         // If ping is pending, execute ping script instead of usage script
         if pendingPing {
             executePingScript()
             return
         }
-        
+
         // Otherwise run usage script
-        
+
         let script = """
             try {
                  const orgResponse = await fetch('/api/organizations');
@@ -445,12 +445,12 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                 return { error: e.toString() };
             }
         """
-        
+
         webView.callAsyncJavaScript(script, arguments: [:], in: nil, in: .page) { [self] result in
             Log.debug(category, "JS Evaluation completed")
 
             switch result {
-            case .success(let value):
+            case let .success(value):
                 Log.debug(category, "RAW JS Result: \(String(describing: value))")
 
                 if let dict = value as? [String: Any] {
@@ -500,29 +500,32 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                     }
                     let tier = dict["tier"] as? String ?? "Unknown"
                     let email = dict["email"] as? String
-                    
+
                     // Metadata extraction
                     var fullName: String?
                     var orgName: String?
                     var planType: String?
-                    
+
                     if let intercom = dict["debugIntercom"] as? [String: Any] {
                         fullName = intercom["name"] as? String
-                        
+
                         // Companies array
                         if let companies = intercom["companies"] as? [[String: Any]], let first = companies.first {
                             orgName = first["name"] as? String
                             planType = first["plan"] as? String
                         }
                     }
-                    
-                    Log.debug(category, "Parsed metadata - Tier: \(tier), Email: \(email ?? "nil"), Name: \(fullName ?? "nil"), Plan: \(planType ?? "nil")")
-                    
+
+                    Log.debug(
+                        category,
+                        "Parsed metadata - Tier: \(tier), Email: \(email ?? "nil"), Name: \(fullName ?? "nil"), Plan: \(planType ?? "nil")"
+                    )
+
                     var sessionPct = 0.0
                     var sessionReset = Constants.Status.ready // Default to Ready if nil
                     var weeklyPct = 0.0
                     var weeklyReset = Constants.Status.ready
-                    
+
                     // Model-specific weekly quotas (for Max plan)
                     var sonnetPct: Double?
                     var sonnetReset: String?
@@ -574,8 +577,11 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                             }
                         }
                     }
-                    
-                    Log.info(category, "FINAL PARSED - sessionPct=\(sessionPct) sessionReset=\(sessionReset) weeklyPct=\(weeklyPct) weeklyReset=\(weeklyReset) sonnetPct=\(String(describing: sonnetPct)) opusPct=\(String(describing: opusPct))")
+
+                    Log.info(
+                        category,
+                        "FINAL PARSED - sessionPct=\(sessionPct) sessionReset=\(sessionReset) weeklyPct=\(weeklyPct) weeklyReset=\(weeklyReset) sonnetPct=\(String(describing: sonnetPct)) opusPct=\(String(describing: opusPct))"
+                    )
 
                     let data = UsageData(
                         sessionPercentage: sessionPct,
@@ -594,13 +600,12 @@ class TrackerService: NSObject, ObservableObject, WKNavigationDelegate {
                         sonnetPercentage: sonnetPct,
                         sonnetReset: sonnetReset
                     )
-                    self.onUpdate?(data)
+                    onUpdate?(data)
                 }
-            case .failure(let error):
+            case let .failure(error):
                 Log.error(category, "JS Error: \(error.localizedDescription)")
-                self.onError?(error)
+                onError?(error)
             }
         }
     }
-
 }

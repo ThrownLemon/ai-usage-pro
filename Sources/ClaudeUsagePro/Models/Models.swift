@@ -135,7 +135,10 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
                 Log.debug(Log.Category.keychain, "Saved \(cookieProps.count) cookies for account \(id)")
             }
         } catch {
-            Log.warning(Log.Category.keychain, "⚠️ Failed to save cookies for account \(id): \(error.localizedDescription)")
+            Log.warning(
+                Log.Category.keychain,
+                "⚠️ Failed to save cookies for account \(id): \(error.localizedDescription)"
+            )
             return false
         }
 
@@ -147,7 +150,10 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
                 Log.debug(Log.Category.keychain, "Saved API token for account \(id)")
             }
         } catch {
-            Log.warning(Log.Category.keychain, "⚠️ Failed to save API token for account \(id): \(error.localizedDescription)")
+            Log.warning(
+                Log.Category.keychain,
+                "⚠️ Failed to save API token for account \(id): \(error.localizedDescription)"
+            )
             // Rollback cookies if they were saved
             if savedCookies {
                 try? KeychainService.delete(forKey: KeychainService.cookiesKey(for: id))
@@ -163,7 +169,10 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
                 Log.debug(Log.Category.keychain, "Saved OAuth token for account \(id)")
             }
         } catch {
-            Log.warning(Log.Category.keychain, "⚠️ Failed to save OAuth token for account \(id): \(error.localizedDescription)")
+            Log.warning(
+                Log.Category.keychain,
+                "⚠️ Failed to save OAuth token for account \(id): \(error.localizedDescription)"
+            )
             // Rollback previous saves
             if savedCookies {
                 try? KeychainService.delete(forKey: KeychainService.cookiesKey(for: id))
@@ -181,7 +190,10 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
                 Log.debug(Log.Category.keychain, "Saved OAuth refresh token for account \(id)")
             }
         } catch {
-            Log.warning(Log.Category.keychain, "⚠️ Failed to save OAuth refresh token for account \(id): \(error.localizedDescription)")
+            Log.warning(
+                Log.Category.keychain,
+                "⚠️ Failed to save OAuth refresh token for account \(id): \(error.localizedDescription)"
+            )
             // Rollback all previous saves
             if savedCookies {
                 try? KeychainService.delete(forKey: KeychainService.cookiesKey(for: id))
@@ -214,11 +226,13 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
                 oauthToken = token
                 Log.debug(Log.Category.keychain, "  Loaded OAuth token (prefix: \(token.prefix(8))...)")
             }
-            if let refreshToken = try KeychainService.loadString(forKey: KeychainService.oauthRefreshTokenKey(for: id)) {
+            if let refreshToken = try KeychainService
+                .loadString(forKey: KeychainService.oauthRefreshTokenKey(for: id))
+            {
                 oauthRefreshToken = refreshToken
                 Log.debug(Log.Category.keychain, "  Loaded OAuth refresh token")
             }
-            if cookieProps.isEmpty && apiToken == nil && oauthToken == nil {
+            if cookieProps.isEmpty, apiToken == nil, oauthToken == nil {
                 Log.warning(Log.Category.keychain, "  No credentials found in keychain for account \(id)")
             }
         } catch {
@@ -234,17 +248,17 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         try KeychainService.delete(forKey: KeychainService.oauthTokenKey(for: id))
         try KeychainService.delete(forKey: KeychainService.oauthRefreshTokenKey(for: id))
     }
-    
+
     /// Display string for the account's tier/plan
     var limitDetails: String {
-        return usageData?.tier ?? Constants.Status.fetching
+        usageData?.tier ?? Constants.Status.fetching
     }
 
     /// Converts stored cookie properties back to HTTPCookie objects
     var cookies: [HTTPCookie] {
         HTTPCookie.fromCodable(cookieProps)
     }
-    
+
     /// Creates a new Claude or Cursor account with cookies.
     /// - Parameters:
     ///   - name: Display name for the account
@@ -253,7 +267,7 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     init(name: String, cookies: [HTTPCookie], type: AccountType = .claude) {
         self.name = name
         self.type = type
-        self.cookieProps = cookies.compactMap { $0.toCodable() }
+        cookieProps = cookies.compactMap { $0.toCodable() }
     }
 
     /// Creates an account with a specific ID, cookies, and optional usage data.
@@ -267,7 +281,7 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
         self.id = id
         self.name = name
         self.type = type
-        self.cookieProps = cookies.compactMap { $0.toCodable() }
+        cookieProps = cookies.compactMap { $0.toCodable() }
         self.usageData = usageData
     }
 
@@ -277,9 +291,9 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     ///   - apiToken: GLM API token
     init(name: String, apiToken: String) {
         self.name = name
-        self.type = .glm
+        type = .glm
         self.apiToken = apiToken
-        self.cookieProps = []
+        cookieProps = []
     }
 
     /// Creates a GLM account with a specific ID, token, and optional usage data.
@@ -291,10 +305,10 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     init(id: UUID, name: String, apiToken: String, usageData: UsageData?) {
         self.id = id
         self.name = name
-        self.type = .glm
+        type = .glm
         self.apiToken = apiToken
         self.usageData = usageData
-        self.cookieProps = []
+        cookieProps = []
     }
 
     /// Creates a new Claude account with an OAuth token (uses official Anthropic API).
@@ -304,10 +318,10 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     ///   - refreshToken: Optional refresh token for obtaining new access tokens
     init(name: String, oauthToken: String, refreshToken: String? = nil) {
         self.name = name
-        self.type = .claude
+        type = .claude
         self.oauthToken = oauthToken
-        self.oauthRefreshToken = refreshToken
-        self.cookieProps = []
+        oauthRefreshToken = refreshToken
+        cookieProps = []
     }
 
     /// Creates a Claude OAuth account with a specific ID, token, and optional usage data.
@@ -320,11 +334,11 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     init(id: UUID, name: String, oauthToken: String, refreshToken: String? = nil, usageData: UsageData?) {
         self.id = id
         self.name = name
-        self.type = .claude
+        type = .claude
         self.oauthToken = oauthToken
-        self.oauthRefreshToken = refreshToken
+        oauthRefreshToken = refreshToken
         self.usageData = usageData
-        self.cookieProps = []
+        cookieProps = []
     }
 
     // MARK: - Convenience Properties
@@ -338,11 +352,11 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     var hasCredentials: Bool {
         switch type {
         case .claude:
-            return usesOAuth || !cookieProps.isEmpty
+            usesOAuth || !cookieProps.isEmpty
         case .cursor:
-            return !cookieProps.isEmpty
+            !cookieProps.isEmpty
         case .glm:
-            return apiToken?.isEmpty == false
+            apiToken?.isEmpty == false
         }
     }
 
@@ -350,6 +364,7 @@ struct ClaudeAccount: Identifiable, Hashable, Codable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }
+
     static func == (lhs: ClaudeAccount, rhs: ClaudeAccount) -> Bool {
         lhs.id == rhs.id
     }

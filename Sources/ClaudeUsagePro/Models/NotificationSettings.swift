@@ -5,14 +5,14 @@ import Foundation
 /// Centralized configuration for usage thresholds
 /// All threshold values, notification types, and settings are defined here
 struct ThresholdConfig: Identifiable {
-    let id: String                                  // Unique identifier for this threshold
-    let defaultThreshold: Double                    // Default threshold value (e.g., 0.75, 0.90)
-    let thresholdKey: String                        // UserDefaults key for the threshold value
+    let id: String // Unique identifier for this threshold
+    let defaultThreshold: Double // Default threshold value (e.g., 0.75, 0.90)
+    let thresholdKey: String // UserDefaults key for the threshold value
     let notificationType: NotificationManager.NotificationType
-    let enabledKey: String                          // UserDefaults key for this threshold's toggle
-    let defaultEnabled: Bool                        // Default value for the toggle
-    let label: String                               // UI label for settings
-    let isSession: Bool                             // true = session, false = weekly
+    let enabledKey: String // UserDefaults key for this threshold's toggle
+    let defaultEnabled: Bool // Default value for the toggle
+    let label: String // UI label for settings
+    let isSession: Bool // true = session, false = weekly
 
     /// Current threshold value from UserDefaults (or default)
     var threshold: Double {
@@ -32,6 +32,7 @@ struct ThresholdConfig: Identifiable {
 /// To add/modify thresholds, update this array only
 enum ThresholdDefinitions {
     // MARK: - UserDefaults Keys for Threshold Values
+
     // Note: Weekly thresholds share the same value keys as session thresholds
     // so users configure one value that applies to both session and weekly alerts
 
@@ -72,7 +73,7 @@ enum ThresholdDefinitions {
     static let weeklyThreshold1 = ThresholdConfig(
         id: "weeklyThreshold1",
         defaultThreshold: defaultThreshold1,
-        thresholdKey: sessionThreshold1ValueKey,  // Uses same value as session threshold 1
+        thresholdKey: sessionThreshold1ValueKey, // Uses same value as session threshold 1
         notificationType: .weeklyThreshold75,
         enabledKey: "notificationWeeklyThreshold1Enabled",
         defaultEnabled: true,
@@ -83,7 +84,7 @@ enum ThresholdDefinitions {
     static let weeklyThreshold2 = ThresholdConfig(
         id: "weeklyThreshold2",
         defaultThreshold: defaultThreshold2,
-        thresholdKey: sessionThreshold2ValueKey,  // Uses same value as session threshold 2
+        thresholdKey: sessionThreshold2ValueKey, // Uses same value as session threshold 2
         notificationType: .weeklyThreshold90,
         enabledKey: "notificationWeeklyThreshold2Enabled",
         defaultEnabled: true,
@@ -94,13 +95,13 @@ enum ThresholdDefinitions {
     /// All session thresholds for iteration
     static let sessionThresholds: [ThresholdConfig] = [
         sessionThreshold1,
-        sessionThreshold2
+        sessionThreshold2,
     ]
 
     /// All weekly thresholds for iteration
     static let weeklyThresholds: [ThresholdConfig] = [
         weeklyThreshold1,
-        weeklyThreshold2
+        weeklyThreshold2,
     ]
 
     /// All thresholds combined
@@ -111,7 +112,7 @@ enum ThresholdDefinitions {
 
 // UserDefaults-backed notification settings
 // Uses @AppStorage pattern for reactive UI updates
-struct NotificationSettings {
+enum NotificationSettings {
     // MARK: - UserDefaults Keys
 
     static let enabledKey = "notificationsEnabled"

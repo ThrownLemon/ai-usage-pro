@@ -62,7 +62,7 @@ struct UsageView: View {
         if tier.contains("max") { return .yellow }
         if tier.contains("team") { return .purple }
         if tier.contains("free") { return .gray }
-        return .blue  // Default/Pro
+        return .blue // Default/Pro
     }
 
     /// Returns a color based on session usage percentage (green → yellow → red).
@@ -70,11 +70,11 @@ struct UsageView: View {
     /// - Returns: Color representing usage severity
     func sessionColor(for percentage: Double) -> Color {
         if percentage < 0.5 {
-            return .green
+            .green
         } else if percentage < 0.75 {
-            return .yellow
+            .yellow
         } else {
-            return .red
+            .red
         }
     }
 
@@ -83,11 +83,11 @@ struct UsageView: View {
     /// - Returns: Gradient transitioning between appropriate colors
     func sessionGradient(for percentage: Double) -> Gradient {
         if percentage < 0.5 {
-            return Gradient(colors: [.green, .yellow])
+            Gradient(colors: [.green, .yellow])
         } else if percentage < 0.75 {
-            return Gradient(colors: [.yellow, .orange])
+            Gradient(colors: [.yellow, .orange])
         } else {
-            return Gradient(colors: [.orange, .red])
+            Gradient(colors: [.orange, .red])
         }
     }
 
@@ -105,35 +105,35 @@ struct UsageView: View {
     /// - Returns: Color representing usage severity
     func weeklyColor(for percentage: Double) -> Color {
         if percentage < 0.75 {
-            return theme.totalGaugeHealthy
+            theme.totalGaugeHealthy
         } else if percentage < 0.90 {
-            return theme.totalGaugeWarning
+            theme.totalGaugeWarning
         } else {
-            return theme.totalGaugeCritical
+            theme.totalGaugeCritical
         }
     }
 
     /// Returns a color for the session gauge based on usage percentage.
     func sessionThemeColor(for percentage: Double) -> Color {
         if percentage < 0.50 {
-            return theme.totalGaugeHealthy
+            theme.totalGaugeHealthy
         } else if percentage < 0.75 {
-            return theme.totalGaugeWarning
+            theme.totalGaugeWarning
         } else {
-            return theme.totalGaugeCritical
+            theme.totalGaugeCritical
         }
     }
 
     /// Returns a gradient for the session gauge based on usage and theme.
     func sessionThemeGradient(for percentage: Double) -> Gradient {
         if percentage < 0.5 {
-            return Gradient(colors: [theme.totalGaugeHealthy, theme.totalGaugeWarning])
+            Gradient(colors: [theme.totalGaugeHealthy, theme.totalGaugeWarning])
         } else if percentage < 0.75 {
-            return Gradient(colors: [
+            Gradient(colors: [
                 theme.totalGaugeWarning, theme.totalGaugeCritical.opacity(0.8),
             ])
         } else {
-            return Gradient(colors: [
+            Gradient(colors: [
                 theme.totalGaugeWarning.opacity(0.8), theme.totalGaugeCritical,
             ])
         }
@@ -166,7 +166,8 @@ struct UsageView: View {
         )
         .shadow(
             color: colorScheme == .dark ? .black.opacity(0.2) : .black.opacity(0.1), radius: 4,
-            x: 0, y: 2)
+            x: 0, y: 2
+        )
     }
 
     // MARK: - Layout Builder
@@ -257,7 +258,7 @@ struct UsageView: View {
 
     /// Arranges gauges based on theme's gaugeArrangement setting
     @ViewBuilder
-    private func gaugeArrangementView<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func gaugeArrangementView(@ViewBuilder content: () -> some View) -> some View {
         switch theme.layout.gaugeArrangement {
         case .horizontal:
             HStack(alignment: .top, spacing: theme.layout.gaugeSpacing) {
@@ -329,7 +330,7 @@ struct UsageView: View {
 
                 Spacer()
 
-                if account.type == .claude && usage.sessionReset == "Ready" {
+                if account.type == .claude, usage.sessionReset == "Ready" {
                     Button(action: { onPing?() }) {
                         Image(systemName: "play.circle.fill")
                             .font(.system(size: 14))
@@ -374,11 +375,11 @@ struct UsageView: View {
     private var sessionLabel: String {
         switch account.type {
         case .glm:
-            return Constants.GLM.sessionWindowLabel
+            Constants.GLM.sessionWindowLabel
         case .cursor:
-            return "Request Usage"
+            "Request Usage"
         default:
-            return "Session Usage"
+            "Session Usage"
         }
     }
 
@@ -562,7 +563,7 @@ struct ErrorCardView: View {
 
             HStack(spacing: 8) {
                 // Re-authenticate button (shown when auth failed)
-                if needsReauth, let onReauthenticate = onReauthenticate {
+                if needsReauth, let onReauthenticate {
                     Button(action: onReauthenticate) {
                         Image(systemName: "key.fill")
                             .font(.system(size: 14, weight: .semibold))
@@ -580,7 +581,7 @@ struct ErrorCardView: View {
                 }
 
                 // Retry button
-                if let onRetry = onRetry {
+                if let onRetry {
                     Button(action: onRetry) {
                         Image(systemName: "arrow.clockwise")
                             .font(.system(size: 14, weight: .semibold))
@@ -676,7 +677,7 @@ struct ThemedProgressBar: View {
 
     private var progressFill: some ShapeStyle {
         if theme.progressBarGradient {
-            return AnyShapeStyle(
+            AnyShapeStyle(
                 LinearGradient(
                     colors: [theme.progressBarStartColor, theme.progressBarEndColor],
                     startPoint: .leading,
@@ -684,7 +685,7 @@ struct ThemedProgressBar: View {
                 )
             )
         } else {
-            return AnyShapeStyle(baseColor)
+            AnyShapeStyle(baseColor)
         }
     }
 }

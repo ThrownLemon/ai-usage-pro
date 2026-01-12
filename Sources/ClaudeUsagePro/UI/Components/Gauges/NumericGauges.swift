@@ -76,7 +76,7 @@ struct NumericDigitalGauge: View {
 
             // LED-style indicator bar
             HStack(spacing: 2) {
-                ForEach(0..<10, id: \.self) { index in
+                ForEach(0 ..< 10, id: \.self) { index in
                     let blockPercentage = Double(index) / 10.0
                     Rectangle()
                         .fill(blockPercentage < percentage ? color : color.opacity(0.15))

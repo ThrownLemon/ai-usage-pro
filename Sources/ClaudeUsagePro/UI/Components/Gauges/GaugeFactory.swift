@@ -2,8 +2,7 @@ import SwiftUI
 
 /// Factory for creating gauge views based on theme configuration.
 /// Uses the theme's `components` property to determine which gauge styles to render.
-struct GaugeFactory {
-
+enum GaugeFactory {
     // MARK: - Session Gauge
 
     /// Creates the appropriate session gauge based on theme configuration.
@@ -16,7 +15,7 @@ struct GaugeFactory {
     @ViewBuilder
     static func makeSessionGauge(
         percentage: Double,
-        resetDisplay: String,
+        resetDisplay _: String,
         color: Color,
         theme: ThemeColors
     ) -> some View {

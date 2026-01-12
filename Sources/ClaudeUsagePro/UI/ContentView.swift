@@ -90,31 +90,31 @@ struct ContentView: View {
     /// Title for the current navigation state
     private var headerTitle: String {
         if showSettings {
-            return "Settings"
+            "Settings"
         } else if showAddAccount {
             switch addAccountStep {
             case .menu:
-                return "Add Account"
+                "Add Account"
             case .claudeOptions:
-                return "Add Claude Account"
+                "Add Claude Account"
             case .claudeOAuthToken:
-                return "OAuth Token"
+                "OAuth Token"
             case .glmToken:
-                return "GLM Coding Plan"
+                "GLM Coding Plan"
             }
         } else {
-            return "AI Usage Pro"
+            "AI Usage Pro"
         }
     }
 
     /// Icon for the current navigation state
     private var headerIcon: String {
         if showSettings {
-            return "gearshape.fill"
+            "gearshape.fill"
         } else if showAddAccount {
-            return "plus.circle.fill"
+            "plus.circle.fill"
         } else {
-            return "sparkles"
+            "sparkles"
         }
     }
 
@@ -152,11 +152,11 @@ struct ContentView: View {
     private var appearanceModeIcon: String {
         switch currentAppearanceMode {
         case .system:
-            return "circle.lefthalf.filled"
+            "circle.lefthalf.filled"
         case .light:
-            return "sun.max.fill"
+            "sun.max.fill"
         case .dark:
-            return "moon.fill"
+            "moon.fill"
         }
     }
 
@@ -164,24 +164,23 @@ struct ContentView: View {
     private var appearanceModeHelpText: String {
         switch currentAppearanceMode {
         case .system:
-            return "System"
+            "System"
         case .light:
-            return "Light"
+            "Light"
         case .dark:
-            return "Dark"
+            "Dark"
         }
     }
 
     /// Cycle through appearance modes: system -> light -> dark -> system
     private func cycleAppearanceMode() {
-        let nextMode: ColorSchemeMode
-        switch currentAppearanceMode {
+        let nextMode: ColorSchemeMode = switch currentAppearanceMode {
         case .system:
-            nextMode = .light
+            .light
         case .light:
-            nextMode = .dark
+            .dark
         case .dark:
-            nextMode = .system
+            .system
         }
         appearanceManager.colorSchemeMode = nextMode.rawValue
     }
@@ -195,27 +194,27 @@ struct ContentView: View {
     private var themeIcon: String {
         switch currentTheme {
         case .standard:
-            return "circle.grid.2x2"
+            "circle.grid.2x2"
         case .minimal:
-            return "minus.circle"
+            "minus.circle"
         case .unified:
-            return "circle.circle"
+            "circle.circle"
         case .premium:
-            return "star.circle"
+            "star.circle"
         case .nature:
-            return "leaf.circle"
+            "leaf.circle"
         case .vibrant:
-            return "sparkle"
+            "sparkle"
         case .ocean:
-            return "drop.circle"
+            "drop.circle"
         case .sunset:
-            return "sun.horizon.circle"
+            "sun.horizon.circle"
         case .midnight:
-            return "moon.stars"
+            "moon.stars"
         case .roseGold:
-            return "heart.circle"
+            "heart.circle"
         case .terminal:
-            return "terminal"
+            "terminal"
         }
     }
 
@@ -231,7 +230,7 @@ struct ContentView: View {
     /// - Parameter session: The account session to create a handler for
     /// - Returns: A closure that triggers re-authentication, or nil if not applicable
     private func reauthenticateHandler(for session: AccountSession) -> (() -> Void)? {
-        guard session.account.type == .claude && session.account.usesOAuth else {
+        guard session.account.type == .claude, session.account.usesOAuth else {
             return nil
         }
         return {
@@ -347,7 +346,6 @@ struct ContentView: View {
                         }
                     }
                     .padding(20)
-
                 }
             }
 
@@ -408,7 +406,11 @@ struct ContentView: View {
                 if let accountId = reAuthAccountId {
                     // Re-authenticating existing account
                     Log.info(Log.Category.app, "Re-authentication success (OAuth)")
-                    appState.reAuthenticateAccount(accountId: accountId, oauthToken: accessToken, refreshToken: refreshToken)
+                    appState.reAuthenticateAccount(
+                        accountId: accountId,
+                        oauthToken: accessToken,
+                        refreshToken: refreshToken
+                    )
                     reAuthAccountId = nil
                 } else {
                     // Adding new account
@@ -468,7 +470,8 @@ struct ContentView: View {
             notificationManager.onError = { error in
                 Log.error(
                     Log.Category.notifications,
-                    "Error requesting permission: \(error.localizedDescription)")
+                    "Error requesting permission: \(error.localizedDescription)"
+                )
                 NotificationManager.shared.onError = nil
             }
 
@@ -476,7 +479,8 @@ struct ContentView: View {
         } else {
             Log.debug(
                 Log.Category.notifications,
-                "Authorization status is \(notificationManager.authorizationStatus.rawValue)")
+                "Authorization status is \(notificationManager.authorizationStatus.rawValue)"
+            )
         }
     }
 }

@@ -1,8 +1,7 @@
-import XCTest
 @testable import ClaudeUsagePro
+import XCTest
 
 final class ConstantsTests: XCTestCase {
-
     // MARK: - Status Constants Tests
 
     func testStatusReady() {
@@ -113,7 +112,7 @@ final class ConstantsTests: XCTestCase {
             NotificationSettings.weeklyThreshold1EnabledKey,
             NotificationSettings.weeklyThreshold2EnabledKey,
             NotificationSettings.threshold1ValueKey,
-            NotificationSettings.threshold2ValueKey
+            NotificationSettings.threshold2ValueKey,
         ]
 
         // All keys should be unique

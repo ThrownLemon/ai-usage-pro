@@ -28,18 +28,18 @@ enum CardDensity: String, Codable, CaseIterable {
     /// Multiplier for padding based on density
     var paddingMultiplier: CGFloat {
         switch self {
-        case .compact: return 0.75
-        case .normal: return 1.0
-        case .expanded: return 1.25
+        case .compact: 0.75
+        case .normal: 1.0
+        case .expanded: 1.25
         }
     }
 
     /// Multiplier for gauge size based on density
     var gaugeSizeMultiplier: CGFloat {
         switch self {
-        case .compact: return 0.85
-        case .normal: return 1.0
-        case .expanded: return 1.15
+        case .compact: 0.85
+        case .normal: 1.0
+        case .expanded: 1.15
         }
     }
 }

@@ -3,7 +3,7 @@ import Security
 
 /// A service for securely storing and retrieving sensitive data from the macOS Keychain.
 /// Use this for storing cookies, API tokens, and other credentials instead of UserDefaults.
-struct KeychainService {
+enum KeychainService {
     /// Errors that can occur during Keychain operations
     enum KeychainError: LocalizedError {
         case unableToSave(OSStatus)
@@ -14,16 +14,16 @@ struct KeychainService {
 
         var errorDescription: String? {
             switch self {
-            case .unableToSave(let status):
-                return "Unable to save to Keychain: \(status)"
-            case .unableToLoad(let status):
-                return "Unable to load from Keychain: \(status)"
-            case .unableToDelete(let status):
-                return "Unable to delete from Keychain: \(status)"
+            case let .unableToSave(status):
+                "Unable to save to Keychain: \(status)"
+            case let .unableToLoad(status):
+                "Unable to load from Keychain: \(status)"
+            case let .unableToDelete(status):
+                "Unable to delete from Keychain: \(status)"
             case .dataConversionFailed:
-                return "Failed to convert data"
+                "Failed to convert data"
             case .itemNotFound:
-                return "Item not found in Keychain"
+                "Item not found in Keychain"
             }
         }
     }
@@ -60,7 +60,7 @@ struct KeychainService {
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
             kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
-            kSecUseDataProtectionKeychain as String: false
+            kSecUseDataProtectionKeychain as String: false,
         ]
 
         let status = SecItemAdd(query as CFDictionary, nil)
@@ -79,7 +79,7 @@ struct KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecAttrAccount as String: key
+            kSecAttrAccount as String: key,
         ]
         // Ignore result - legacy items may not exist
         _ = SecItemDelete(query as CFDictionary)
@@ -92,7 +92,7 @@ struct KeychainService {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
-            kSecUseDataProtectionKeychain as String: false
+            kSecUseDataProtectionKeychain as String: false,
         ]
         // Best-effort deletion - item may not exist
         _ = SecItemDelete(query as CFDictionary)
@@ -111,7 +111,10 @@ struct KeychainService {
         // Fall back to legacy services for migration
         for legacyService in legacyServices where legacyService != service {
             if let data = try loadFromService(legacyService, forKey: key) {
-                Log.info(Log.Category.keychain, "Found data in legacy service '\(legacyService)', migrating to '\(service)'")
+                Log.info(
+                    Log.Category.keychain,
+                    "Found data in legacy service '\(legacyService)', migrating to '\(service)'"
+                )
                 // Migrate to the primary service
                 try? save(data, forKey: key)
                 return data
@@ -130,7 +133,7 @@ struct KeychainService {
             kSecAttrAccount as String: key,
             kSecReturnData as String: true,
             kSecMatchLimit as String: kSecMatchLimitOne,
-            kSecUseDataProtectionKeychain as String: false
+            kSecUseDataProtectionKeychain as String: false,
         ]
 
         var result: AnyObject?
@@ -156,7 +159,7 @@ struct KeychainService {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
-            kSecUseDataProtectionKeychain as String: false
+            kSecUseDataProtectionKeychain as String: false,
         ]
 
         let status = SecItemDelete(query as CFDictionary)
@@ -173,7 +176,7 @@ struct KeychainService {
     ///   - object: The Codable object to store
     ///   - key: The unique key to identify this item
     /// - Throws: KeychainError or encoding errors
-    static func save<T: Encodable>(_ object: T, forKey key: String) throws {
+    static func save(_ object: some Encodable, forKey key: String) throws {
         let data = try JSONEncoder().encode(object)
         try save(data, forKey: key)
     }
@@ -197,7 +200,7 @@ struct KeychainService {
     ///   - key: The unique key to identify this item
     /// - Returns: true if saved successfully, false if encoding or save failed
     @discardableResult
-    static func saveOptional<T: Encodable>(_ object: T, forKey key: String) -> Bool {
+    static func saveOptional(_ object: some Encodable, forKey key: String) -> Bool {
         guard let data = try? JSONEncoder().encode(object) else {
             return false
         }
@@ -245,28 +248,28 @@ struct KeychainService {
     /// - Parameter accountId: The account's UUID
     /// - Returns: A unique key string for the account's cookies
     static func cookiesKey(for accountId: UUID) -> String {
-        return "cookies_\(accountId.uuidString)"
+        "cookies_\(accountId.uuidString)"
     }
 
     /// Generate a Keychain key for storing an API token for a specific account
     /// - Parameter accountId: The account's UUID
     /// - Returns: A unique key string for the account's API token
     static func apiTokenKey(for accountId: UUID) -> String {
-        return "apiToken_\(accountId.uuidString)"
+        "apiToken_\(accountId.uuidString)"
     }
 
     /// Generate a Keychain key for storing an OAuth token for a specific account
     /// - Parameter accountId: The account's UUID
     /// - Returns: A unique key string for the account's OAuth token
     static func oauthTokenKey(for accountId: UUID) -> String {
-        return "oauthToken_\(accountId.uuidString)"
+        "oauthToken_\(accountId.uuidString)"
     }
 
     /// Generate a Keychain key for storing an OAuth refresh token for a specific account
     /// - Parameter accountId: The account's UUID
     /// - Returns: A unique key string for the account's OAuth refresh token
     static func oauthRefreshTokenKey(for accountId: UUID) -> String {
-        return "oauthRefreshToken_\(accountId.uuidString)"
+        "oauthRefreshToken_\(accountId.uuidString)"
     }
 
     /// Delete all Keychain items for this app's service.
@@ -280,7 +283,7 @@ struct KeychainService {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
-            kSecUseDataProtectionKeychain as String: false
+            kSecUseDataProtectionKeychain as String: false,
         ]
 
         let status = SecItemDelete(query as CFDictionary)

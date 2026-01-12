@@ -13,15 +13,15 @@ class AppearanceManager: ObservableObject {
     }
 
     /// KVO observer for system appearance changes (nonisolated for deinit access)
-    nonisolated(unsafe) private var appearanceObserver: NSKeyValueObservation?
+    private nonisolated(unsafe) var appearanceObserver: NSKeyValueObservation?
     /// NotificationCenter observer for UserDefaults changes (nonisolated for deinit access)
-    nonisolated(unsafe) private var userDefaultsObserver: NSObjectProtocol?
+    private nonisolated(unsafe) var userDefaultsObserver: NSObjectProtocol?
 
     init() {
         // Load initial color scheme mode from UserDefaults
-        self.colorSchemeMode =
+        colorSchemeMode =
             UserDefaults.standard.string(forKey: ThemeManager.colorSchemeModeKey)
-            ?? ColorSchemeMode.system.rawValue
+                ?? ColorSchemeMode.system.rawValue
 
         // Detect initial system appearance
         updateSystemColorScheme()
@@ -41,10 +41,10 @@ class AppearanceManager: ObservableObject {
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                guard let self = self else { return }
+                guard let self else { return }
                 let newMode =
                     UserDefaults.standard.string(forKey: ThemeManager.colorSchemeModeKey)
-                    ?? ColorSchemeMode.system.rawValue
+                        ?? ColorSchemeMode.system.rawValue
                 if self.colorSchemeMode != newMode {
                     self.colorSchemeMode = newMode
                 }

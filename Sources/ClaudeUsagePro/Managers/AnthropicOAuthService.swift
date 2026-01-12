@@ -25,23 +25,23 @@ enum AnthropicOAuthError: Error, LocalizedError {
     var failureReason: String? {
         switch self {
         case .noToken:
-            return "No OAuth token is available."
+            "No OAuth token is available."
         case .invalidURL:
-            return "The API URL is invalid."
+            "The API URL is invalid."
         case let .httpError(code, msg):
-            if let msg = msg {
-                return "The server returned HTTP \(code): \(msg)"
+            if let msg {
+                "The server returned HTTP \(code): \(msg)"
             } else {
-                return "The server returned HTTP \(code)."
+                "The server returned HTTP \(code)."
             }
-        case .decodingError(let error):
-            return "Failed to parse the server response: \(error.localizedDescription)"
-        case .networkError(let error):
-            return "A network error occurred: \(error.localizedDescription)"
-        case .allRetriesFailed(let lastError):
-            return "All retry attempts failed: \(lastError?.localizedDescription ?? "Unknown")"
+        case let .decodingError(error):
+            "Failed to parse the server response: \(error.localizedDescription)"
+        case let .networkError(error):
+            "A network error occurred: \(error.localizedDescription)"
+        case let .allRetriesFailed(lastError):
+            "All retry attempts failed: \(lastError?.localizedDescription ?? "Unknown")"
         case .rateLimitExceeded:
-            return "Rate limit exceeded. Please wait before trying again."
+            "Rate limit exceeded. Please wait before trying again."
         }
     }
 
@@ -49,7 +49,7 @@ enum AnthropicOAuthError: Error, LocalizedError {
         switch self {
         case .noToken:
             return "Make sure Claude Code is installed and authenticated, or add a Claude.ai account."
-        case .httpError(let code, _):
+        case let .httpError(code, _):
             if code == 401 {
                 return "Your token may be invalid or expired. Try re-authenticating in Claude Code."
             } else if code == 429 {
@@ -146,7 +146,7 @@ actor AnthropicOAuthService {
         "claude_max": "Max",
         "claude_pro": "Pro",
         "claude_enterprise": "Enterprise",
-        "claude_team": "Team"
+        "claude_team": "Team",
     ]
 
     // MARK: - Public API
@@ -158,7 +158,7 @@ actor AnthropicOAuthService {
     func fetchUsage(token: String) async throws -> UsageData {
         var lastError: Error?
 
-        for attempt in 0..<maxRetries {
+        for attempt in 0 ..< maxRetries {
             do {
                 let usageResponse = try await fetchUsageResponse(token: token)
                 let planType = await fetchPlanType(token: token)
@@ -171,8 +171,11 @@ actor AnthropicOAuthService {
                 let delay = rateLimitBackoffSeconds * pow(2.0, Double(attempt))
                 try await Task.sleep(for: .seconds(delay))
 
-            } catch AnthropicOAuthError.networkError(let error) {
-                Log.warning(category, "Network error (attempt \(attempt + 1)/\(maxRetries)): \(error.localizedDescription)")
+            } catch let AnthropicOAuthError.networkError(error) {
+                Log.warning(
+                    category,
+                    "Network error (attempt \(attempt + 1)/\(maxRetries)): \(error.localizedDescription)"
+                )
                 lastError = AnthropicOAuthError.networkError(error)
                 let delay = baseBackoffSeconds * pow(2.0, Double(attempt))
                 try await Task.sleep(for: .seconds(delay))
@@ -223,7 +226,7 @@ actor AnthropicOAuthService {
         let bodyParams: [String: String] = [
             "grant_type": "refresh_token",
             "refresh_token": refreshToken,
-            "client_id": clientId
+            "client_id": clientId,
         ]
 
         request.httpBody = try JSONSerialization.data(withJSONObject: bodyParams)
@@ -241,7 +244,7 @@ actor AnthropicOAuthService {
                 throw AnthropicOAuthError.rateLimitExceeded
             }
 
-            guard (200...299).contains(httpResponse.statusCode) else {
+            guard (200 ... 299).contains(httpResponse.statusCode) else {
                 let message = String(data: data, encoding: .utf8)
                 Log.warning(category, "Token refresh HTTP error: \(httpResponse.statusCode)")
                 throw AnthropicOAuthError.httpError(statusCode: httpResponse.statusCode, message: message)
@@ -285,7 +288,7 @@ actor AnthropicOAuthService {
                 throw AnthropicOAuthError.rateLimitExceeded
             }
 
-            guard (200...299).contains(httpResponse.statusCode) else {
+            guard (200 ... 299).contains(httpResponse.statusCode) else {
                 let message = String(data: data, encoding: .utf8)
                 Log.warning(category, "HTTP error: \(httpResponse.statusCode)")
                 throw AnthropicOAuthError.httpError(statusCode: httpResponse.statusCode, message: message)
@@ -325,7 +328,8 @@ actor AnthropicOAuthService {
             let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse,
-                  (200...299).contains(httpResponse.statusCode) else {
+                  (200 ... 299).contains(httpResponse.statusCode)
+            else {
                 return nil
             }
 
@@ -343,9 +347,9 @@ actor AnthropicOAuthService {
     private func isRetryableURLError(_ error: URLError) -> Bool {
         switch error.code {
         case .timedOut, .cannotConnectToHost, .networkConnectionLost, .notConnectedToInternet:
-            return true
+            true
         default:
-            return false
+            false
         }
     }
 

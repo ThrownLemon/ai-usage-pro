@@ -11,14 +11,14 @@ extension HTTPCookie {
     /// Converts this cookie to a Codable dictionary representation.
     /// - Returns: Dictionary of string properties, or nil if conversion fails
     func toCodable() -> [String: String]? {
-        guard let props = self.properties else { return nil }
+        guard let props = properties else { return nil }
         // Convert [HTTPCookiePropertyKey: Any] to [String: String]
         var stringProps: [String: String] = [:]
         for (key, value) in props {
             if let v = value as? String {
                 stringProps[key.rawValue] = v
             } else if let v = value as? Int {
-                 stringProps[key.rawValue] = String(v)
+                stringProps[key.rawValue] = String(v)
             } else if let v = value as? Bool {
                 stringProps[key.rawValue] = String(v)
             }
@@ -30,7 +30,7 @@ extension HTTPCookie {
     /// - Parameter cookieProps: Array of string dictionaries representing cookie properties
     /// - Returns: Array of HTTPCookie objects (nil entries are filtered out)
     static func fromCodable(_ cookieProps: [[String: String]]) -> [HTTPCookie] {
-        return cookieProps.compactMap { props in
+        cookieProps.compactMap { props in
             // Convert String keys back to HTTPCookiePropertyKey
             var convertedProps: [HTTPCookiePropertyKey: Any] = [:]
             for (k, v) in props {

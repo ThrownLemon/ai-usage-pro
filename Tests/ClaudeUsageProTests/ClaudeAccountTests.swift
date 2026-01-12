@@ -1,8 +1,7 @@
-import XCTest
 @testable import ClaudeUsagePro
+import XCTest
 
 final class ClaudeAccountTests: XCTestCase {
-
     // MARK: - Account Type Tests
 
     func testAccountTypeCoding() throws {

@@ -62,8 +62,8 @@ struct CircularArcGauge: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    private let startAngle: Double = 135  // Start from bottom-left
-    private let endAngle: Double = 405    // End at bottom-right (270° arc)
+    private let startAngle: Double = 135 // Start from bottom-left
+    private let endAngle: Double = 405 // End at bottom-right (270° arc)
 
     var body: some View {
         VStack(alignment: .center, spacing: 6) {
@@ -132,7 +132,7 @@ struct CircularSegmentedGauge: View {
 
             ZStack {
                 // Draw segmented ring
-                ForEach(0..<segmentCount, id: \.self) { index in
+                ForEach(0 ..< segmentCount, id: \.self) { index in
                     SegmentArc(
                         index: index,
                         total: segmentCount
@@ -169,8 +169,8 @@ struct SegmentArc: Shape {
     let total: Int
 
     func path(in rect: CGRect) -> Path {
-        let gapAngle: Double = 3  // Gap between segments in degrees
-        let totalAngle: Double = 270  // Total arc span
+        let gapAngle: Double = 3 // Gap between segments in degrees
+        let totalAngle: Double = 270 // Total arc span
         let segmentAngle = (totalAngle - Double(total) * gapAngle) / Double(total)
 
         let startAngle = 135 + Double(index) * (segmentAngle + gapAngle)

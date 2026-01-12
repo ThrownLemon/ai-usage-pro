@@ -30,7 +30,7 @@ actor UsageHistoryStore {
     static let shared = UsageHistoryStore()
 
     /// Maximum number of data points to store per account
-    private let maxDataPoints = 48  // At 5-min intervals = 4 hours of data
+    private let maxDataPoints = 48 // At 5-min intervals = 4 hours of data
 
     /// Historical data keyed by account ID
     private var history: [UUID: [UsageDataPoint]] = [:]
@@ -61,7 +61,7 @@ actor UsageHistoryStore {
     func getHistory(for accountId: UUID, limit: Int? = nil) -> [UsageDataPoint] {
         let accountHistory = history[accountId] ?? []
 
-        if let limit = limit, limit < accountHistory.count {
+        if let limit, limit < accountHistory.count {
             return Array(accountHistory.suffix(limit))
         }
 

@@ -19,9 +19,9 @@ enum ImageAsset {
         // Try to read Contents.json to get the actual filename
         let contentsPath = "\(imagesetPath)/Contents.json"
         if let contentsData = FileManager.default.contents(atPath: contentsPath),
-            let contents = try? JSONDecoder().decode(ImagesetContents.self, from: contentsData),
-            let imageInfo = contents.images.first(where: { $0.filename != nil }),
-            let filename = imageInfo.filename
+           let contents = try? JSONDecoder().decode(ImagesetContents.self, from: contentsData),
+           let imageInfo = contents.images.first(where: { $0.filename != nil }),
+           let filename = imageInfo.filename
         {
             let imagePath = "\(imagesetPath)/\(filename)"
             if let image = NSImage(contentsOfFile: imagePath) {
@@ -58,7 +58,7 @@ struct AssetImage: View {
 
     var body: some View {
         Group {
-            if let nsImage = nsImage {
+            if let nsImage {
                 Image(nsImage: nsImage)
                     .resizable()
                     .aspectRatio(contentMode: contentMode)
